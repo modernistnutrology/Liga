@@ -7,6 +7,33 @@ function proximaPotencia2(n: number): number {
   return p
 }
 
+/**
+ * Retorna a ordem padrão de seeding para um bracket de N slots.
+ * Para N=8: [1, 8, 4, 5, 3, 6, 2, 7]
+ * O slot na posição i recebe a dupla com seed = result[i].
+ * Garante que seeds 1 e 2 ficam em quadrantes opostos (só se enfrentam na final),
+ * e que BYEs (seeds que não existem) ficam distribuídos.
+ */
+function standardSeedingOrder(total: number): number[] {
+  if (total <= 1) return [1]
+  const half = standardSeedingOrder(total / 2)
+  const result: number[] = []
+  for (const s of half) {
+    result.push(s)
+    result.push(total + 1 - s)
+  }
+  return result
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 export function gerarChaveamentoEliminatorio(
   torneioId: string,
   duplas: Dupla[],
@@ -15,36 +42,21 @@ export function gerarChaveamentoEliminatorio(
   const total = proximaPotencia2(duplas.length)
   const slots: (string | null)[] = Array(total).fill(null)
 
-  // Separa duplas com seed (ordem definida) das sem seed (aleatórias)
+  // Ordena: seeds primeiro (1, 2, 3...), depois as sem seed em ordem aleatória.
+  // O índice nessa lista vira o "número de seed" implícito (1-based).
   const comSeed = [...duplas].filter(d => d.seed != null).sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999))
-  const semSeed = duplas.filter(d => d.seed == null)
+  const semSeed = shuffle(duplas.filter(d => d.seed == null))
+  const ordered: Dupla[] = [...comSeed, ...semSeed]
 
-  if (comSeed.length === duplas.length && duplas.length > 0) {
-    // Todas têm seed (caso vindo de grupos): preserva a ordem fornecida.
-    // O caller já fez intercalação inteligente (1ºA vs 2ºB, etc).
-    // Coloca em slots sequenciais: 0,1,2,3...
-    comSeed.forEach((d, i) => {
-      if (i < total) slots[i] = d.id
-    })
-  } else {
-    // Modo padrão: 4 primeiras seeds em quadrantes opostos, resto aleatório
-    const seedPositions = [0, total - 1, Math.floor(total / 2) - 1, Math.floor(total / 2)]
-    comSeed.forEach((d, i) => {
-      if (i < seedPositions.length) slots[seedPositions[i]] = d.id
-    })
-
-    // Restantes (sem seed) preenchem aleatoriamente
-    const remaining = [
-      ...semSeed.map(d => d.id),
-      ...comSeed.slice(seedPositions.length).map(d => d.id), // seeds 5+ vão pro pool
-    ]
-    for (let i = 0; i < total; i++) {
-      if (!slots[i] && remaining.length > 0) {
-        const idx = Math.floor(Math.random() * remaining.length)
-        slots[i] = remaining.splice(idx, 1)[0]
-      }
-    }
-  }
+  // Usa ordem padrão de seeding de torneios.
+  // BYEs (slots onde a "seed" não existe) ficam DISTRIBUÍDOS entre as chaves,
+  // evitando que duas BYEs se enfrentem na semifinal.
+  const seedOrder = standardSeedingOrder(total) // ex: [1, 8, 4, 5, 3, 6, 2, 7]
+  seedOrder.forEach((seedNum, slotIdx) => {
+    const dupla = ordered[seedNum - 1]
+    if (dupla) slots[slotIdx] = dupla.id
+    // else: slot fica null → BYE distribuído na posição certa
+  })
 
   const jogos: Jogo[] = []
   let rodada = 1
