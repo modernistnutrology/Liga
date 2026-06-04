@@ -3,17 +3,67 @@ import { useTorneioStore } from '../store/torneioStore'
 import { useState, useRef } from 'react'
 import Modal from '../components/ui/Modal'
 import LancarResultadoModal from '../components/resultados/LancarResultadoModal'
-import type { Jogo } from '../types'
-import { Download, Loader2 } from 'lucide-react'
+import type { Jogo, Dupla } from '../types'
+import { Download, Loader2, Zap } from 'lucide-react'
 import html2canvas from 'html2canvas'
 import { showToast } from '../components/ui/Toast'
+import { calcularClassificacao } from '../utils/calcularClassificacao'
+import { gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 
 export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
+  const setJogos = useTorneioStore(s => s.setJogos)
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
   const [exporting, setExporting] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
+
+  // Detectar se precisa gerar mata-mata (formato grupos + mata-mata)
+  const isGruposFormat = torneio?.formato === 'grupos_e_mata_mata'
+  const grupoFasesNomes = torneio?.grupos.map(g => g.nome) ?? []
+  const jogosDeGrupos = torneio?.jogos.filter(j => grupoFasesNomes.includes(j.fase)) ?? []
+  const jogosDeMataMata = torneio?.jogos.filter(j => !grupoFasesNomes.includes(j.fase)) ?? []
+  const todosGruposFinalizados =
+    jogosDeGrupos.length > 0 &&
+    jogosDeGrupos.every(j => j.status === 'finalizado' || j.status === 'wo')
+  const mataMataJaGerado = jogosDeMataMata.length > 0
+  const podeGerarMataMata = isGruposFormat && todosGruposFinalizados && !mataMataJaGerado
+
+  function handleGerarMataMata() {
+    if (!torneio) return
+    const classificadosPorGrupo = torneio.classificadosPorGrupo ?? 2
+
+    // Pega os N primeiros de cada grupo, em ordem (1ºA, 1ºB, ... 2ºA, 2ºB)
+    const classificadosPorPos: Dupla[][] = []
+    for (let pos = 0; pos < classificadosPorGrupo; pos++) {
+      classificadosPorPos[pos] = []
+      for (const grupo of torneio.grupos) {
+        const duplasGrupo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
+        const ranking = calcularClassificacao(duplasGrupo, torneio.jogos, grupo.nome)
+        if (ranking[pos]) classificadosPorPos[pos].push(ranking[pos].dupla)
+      }
+    }
+
+    // Intercalar: 1ºA vs 2ºB, 1ºB vs 2ºA — seeds para evitar mesmo grupo se enfrentar logo
+    const ordenadosParaBracket: Dupla[] = []
+    const primeiros = classificadosPorPos[0] ?? []
+    const segundos = classificadosPorPos[1] ?? []
+    const outros = classificadosPorPos.slice(2).flat()
+    const segundosInvertidos = [...segundos].reverse()
+
+    for (let i = 0; i < primeiros.length; i++) {
+      ordenadosParaBracket.push(primeiros[i])
+      if (segundosInvertidos[i]) ordenadosParaBracket.push(segundosInvertidos[i])
+    }
+    ordenadosParaBracket.push(...outros)
+
+    // Atribui seeds (cabeças de chave)
+    const duplasComSeed = ordenadosParaBracket.map((d, i) => ({ ...d, seed: i + 1 }))
+
+    const jogosBracket = gerarChaveamentoEliminatorio(torneio.id, duplasComSeed)
+    setJogos(torneio.id, [...torneio.jogos, ...jogosBracket])
+    showToast('Mata-mata gerado! Vencedores dos grupos avançam.', 'success')
+  }
 
   async function handleExport() {
     if (!exportRef.current || !torneio) return
@@ -117,6 +167,25 @@ export default function Chaveamento() {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Botão para gerar mata-mata quando grupos finalizam */}
+      {podeGerarMataMata && (
+        <div className="card p-5 border-yellow-400/40 bg-yellow-400/5 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-yellow-400/15 border border-yellow-400/40 flex items-center justify-center flex-shrink-0">
+            <Zap size={22} className="text-yellow-300" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-yellow-300">Fase de grupos concluída!</h3>
+            <p className="text-sm text-teal-200 mt-0.5">
+              Gere o chaveamento do mata-mata com os classificados de cada grupo.
+            </p>
+          </div>
+          <button onClick={handleGerarMataMata} className="btn-primary text-sm flex items-center gap-2 flex-shrink-0">
+            <Zap size={14} />
+            Gerar mata-mata
+          </button>
         </div>
       )}
 
