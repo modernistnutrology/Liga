@@ -74,6 +74,13 @@ export default function NovoTorneio() {
 
   return (
     <div className="max-w-xl mx-auto page-enter">
+      <button
+        onClick={() => navigate('/')}
+        className="flex items-center gap-1.5 text-teal-200 hover:text-yellow-300 mb-4 text-sm font-medium transition-colors"
+      >
+        <ChevronLeft size={16} />
+        Voltar à home
+      </button>
       <h1 className="font-display text-4xl text-yellow-300 tracking-wider mb-6">NOVO TORNEIO</h1>
 
       {/* Step indicator */}
