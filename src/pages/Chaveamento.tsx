@@ -69,22 +69,57 @@ export default function Chaveamento() {
     if (!exportRef.current || !torneio) return
     setExporting(true)
     try {
-      // Captura o conteúdo COMPLETO (mesmo o que está fora da viewport)
+      // Captura conteúdo completo, mesmo fora da viewport
       const canvas = await html2canvas(exportRef.current, {
         backgroundColor: '#062a32',
-        scale: 2, // qualidade alta (retina)
+        scale: 2,
         windowWidth: exportRef.current.scrollWidth,
         windowHeight: exportRef.current.scrollHeight,
         width: exportRef.current.scrollWidth,
         height: exportRef.current.scrollHeight,
         useCORS: true,
       })
-      const link = document.createElement('a')
+
       const safeName = torneio.nome.replace(/[^a-z0-9\-]/gi, '_').toLowerCase()
-      link.download = `chaveamento_${safeName}_${new Date().toISOString().slice(0, 10)}.png`
-      link.href = canvas.toDataURL('image/png')
+      const filename = `chaveamento_${safeName}_${new Date().toISOString().slice(0, 10)}.png`
+
+      // Converte canvas em Blob
+      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
+      if (!blob) {
+        showToast('Erro ao gerar imagem', 'error')
+        return
+      }
+
+      const file = new File([blob], filename, { type: 'image/png' })
+
+      // iOS / mobile: usa Web Share API (abre "Salvar em Arquivos", "Salvar em Fotos", "AirDrop"...)
+      const nav = navigator as any
+      if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+        try {
+          await nav.share({
+            files: [file],
+            title: `Chaveamento — ${torneio.nome}`,
+            text: `Chaveamento do torneio ${torneio.nome}`,
+          })
+          showToast('Chaveamento compartilhado!')
+          return
+        } catch (e: any) {
+          // Usuário cancelou — não mostra erro, mas não cai pro download (já tem o share)
+          if (e?.name === 'AbortError') return
+          // Outro erro: cai pro download
+        }
+      }
+
+      // Desktop / fallback: download direto pra pasta Downloads
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.download = filename
+      link.href = url
+      document.body.appendChild(link)
       link.click()
-      showToast('Chaveamento exportado!', 'success')
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 1500)
+      showToast('Chaveamento baixado!', 'success')
     } catch (e) {
       showToast('Erro ao exportar', 'error')
       console.error(e)
