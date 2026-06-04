@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    @apply text-teal-50 m-0;
+    background: #062a32;
+    font-family: 'Inter', 'DM Sans', sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 text-teal-950 font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-yellow-500/20;
+  }
+  .btn-secondary {
+    @apply bg-teal-800 hover:bg-teal-700 text-teal-50 font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer border border-teal-700;
+  }
+  .btn-danger {
+    @apply bg-red-700 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+  .btn-ghost {
+    @apply hover:bg-teal-800 text-teal-200 hover:text-teal-50 px-3 py-2 rounded-lg transition-colors cursor-pointer;
+  }
+  .card {
+    @apply border border-teal-800 rounded-xl shadow-lg;
+    background: #0a3d48;
+  }
+  .input {
+    @apply border border-teal-700 text-teal-50 rounded-lg px-3 py-2 w-full focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 placeholder:text-teal-400 transition-colors;
+    background: #0a3d48;
+  }
+  .select {
+    @apply border border-teal-700 text-teal-50 rounded-lg px-3 py-2 w-full focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 cursor-pointer;
+    background: #0a3d48;
+  }
+  .label {
+    @apply block text-sm font-medium text-teal-200 mb-1;
+  }
+}
+
+/* Slot machine animation */
+@keyframes slotRoll {
+  0%   { transform: translateY(0%);   opacity: 1; }
+  49%  { transform: translateY(-50%); opacity: 0.5; }
+  50%  { transform: translateY(50%);  opacity: 0.5; }
+  100% { transform: translateY(0%);   opacity: 1; }
+}
+.slot-spin { animation: slotRoll 0.12s linear infinite; }
+
+/* Page transitions */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: fadeIn 0.25s ease-out; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
