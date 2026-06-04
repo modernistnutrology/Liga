@@ -15,22 +15,34 @@ export function gerarChaveamentoEliminatorio(
   const total = proximaPotencia2(duplas.length)
   const slots: (string | null)[] = Array(total).fill(null)
 
-  // Posicionar seeds
-  const seeded = [...duplas].sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999))
-  const unseeded = duplas.filter(d => !d.seed)
+  // Separa duplas com seed (ordem definida) das sem seed (aleatórias)
+  const comSeed = [...duplas].filter(d => d.seed != null).sort((a, b) => (a.seed ?? 999) - (b.seed ?? 999))
+  const semSeed = duplas.filter(d => d.seed == null)
 
-  // Seeds em quadrantes opostos
-  const seedPositions = [0, total - 1, Math.floor(total / 2) - 1, Math.floor(total / 2)]
-  seeded.filter(d => d.seed).forEach((d, i) => {
-    if (i < seedPositions.length) slots[seedPositions[i]] = d.id
-  })
+  if (comSeed.length === duplas.length && duplas.length > 0) {
+    // Todas têm seed (caso vindo de grupos): preserva a ordem fornecida.
+    // O caller já fez intercalação inteligente (1ºA vs 2ºB, etc).
+    // Coloca em slots sequenciais: 0,1,2,3...
+    comSeed.forEach((d, i) => {
+      if (i < total) slots[i] = d.id
+    })
+  } else {
+    // Modo padrão: 4 primeiras seeds em quadrantes opostos, resto aleatório
+    const seedPositions = [0, total - 1, Math.floor(total / 2) - 1, Math.floor(total / 2)]
+    comSeed.forEach((d, i) => {
+      if (i < seedPositions.length) slots[seedPositions[i]] = d.id
+    })
 
-  // Preencher restantes aleatoriamente
-  const remaining = unseeded.map(d => d.id)
-  for (let i = 0; i < total; i++) {
-    if (!slots[i] && remaining.length > 0) {
-      const idx = Math.floor(Math.random() * remaining.length)
-      slots[i] = remaining.splice(idx, 1)[0]
+    // Restantes (sem seed) preenchem aleatoriamente
+    const remaining = [
+      ...semSeed.map(d => d.id),
+      ...comSeed.slice(seedPositions.length).map(d => d.id), // seeds 5+ vão pro pool
+    ]
+    for (let i = 0; i < total; i++) {
+      if (!slots[i] && remaining.length > 0) {
+        const idx = Math.floor(Math.random() * remaining.length)
+        slots[i] = remaining.splice(idx, 1)[0]
+      }
     }
   }
 
