@@ -170,21 +170,15 @@ export default function Chaveamento() {
         </div>
       )}
 
-      {/* Botão para gerar mata-mata quando grupos finalizam */}
+      {/* Fallback: caso o mata-mata não tenha sido gerado automaticamente (torneios antigos), botão manual */}
       {podeGerarMataMata && (
-        <div className="card p-5 border-yellow-400/40 bg-yellow-400/5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-yellow-400/15 border border-yellow-400/40 flex items-center justify-center flex-shrink-0">
-            <Zap size={22} className="text-yellow-300" />
+        <div className="card p-4 border-yellow-400/40 bg-yellow-400/5 flex items-center gap-3">
+          <Zap size={18} className="text-yellow-300 flex-shrink-0" />
+          <div className="flex-1 text-sm text-teal-100">
+            Mata-mata pendente. Clique para gerar com os classificados.
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-yellow-300">Fase de grupos concluída!</h3>
-            <p className="text-sm text-teal-200 mt-0.5">
-              Gere o chaveamento do mata-mata com os classificados de cada grupo.
-            </p>
-          </div>
-          <button onClick={handleGerarMataMata} className="btn-primary text-sm flex items-center gap-2 flex-shrink-0">
-            <Zap size={14} />
-            Gerar mata-mata
+          <button onClick={handleGerarMataMata} className="btn-primary text-sm flex-shrink-0">
+            Gerar agora
           </button>
         </div>
       )}

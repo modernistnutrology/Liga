@@ -2,7 +2,58 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Torneio, Jogador, Dupla, Jogo, Grupo } from '../types'
 import { nanoid } from '../utils/nanoid'
-import { avançarVencedor } from '../utils/gerarChaveamento'
+import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
+import { calcularClassificacao } from '../utils/calcularClassificacao'
+
+/**
+ * Quando o último jogo da fase de grupos é finalizado, gera automaticamente
+ * o mata-mata com os classificados. Retorna a nova lista de jogos.
+ */
+function maybeGerarMataMata(torneio: Torneio, jogos: Jogo[]): Jogo[] {
+  if (torneio.formato !== 'grupos_e_mata_mata') return jogos
+  if (torneio.grupos.length === 0) return jogos
+
+  const grupoFases = torneio.grupos.map(g => g.nome)
+  const jogosDeGrupo = jogos.filter(j => grupoFases.includes(j.fase))
+  const jogosDeMataMata = jogos.filter(j => !grupoFases.includes(j.fase))
+
+  // Já gerado? Não gera de novo.
+  if (jogosDeMataMata.length > 0) return jogos
+  // Algum jogo de grupo ainda não finalizado? Espera.
+  const todosGruposFinalizados = jogosDeGrupo.length > 0 &&
+    jogosDeGrupo.every(j => j.status === 'finalizado' || j.status === 'wo')
+  if (!todosGruposFinalizados) return jogos
+
+  // Pega N primeiros de cada grupo
+  const classificadosPorGrupo = torneio.classificadosPorGrupo ?? 2
+  const classificadosPorPos: Dupla[][] = []
+  for (let pos = 0; pos < classificadosPorGrupo; pos++) {
+    classificadosPorPos[pos] = []
+    for (const grupo of torneio.grupos) {
+      const duplasGrupo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
+      const ranking = calcularClassificacao(duplasGrupo, jogos, grupo.nome)
+      if (ranking[pos]) classificadosPorPos[pos].push(ranking[pos].dupla)
+    }
+  }
+
+  // Intercalar: 1ºA vs 2ºB, 1ºB vs 2ºA (evita duplas do mesmo grupo se enfrentarem cedo)
+  const ordenados: Dupla[] = []
+  const primeiros = classificadosPorPos[0] ?? []
+  const segundos = classificadosPorPos[1] ?? []
+  const outros = classificadosPorPos.slice(2).flat()
+  const segundosInvertidos = [...segundos].reverse()
+  for (let i = 0; i < primeiros.length; i++) {
+    ordenados.push(primeiros[i])
+    if (segundosInvertidos[i]) ordenados.push(segundosInvertidos[i])
+  }
+  ordenados.push(...outros)
+
+  if (ordenados.length < 2) return jogos
+
+  const duplasComSeed = ordenados.map((d, i) => ({ ...d, seed: i + 1 }))
+  const jogosBracket = gerarChaveamentoEliminatorio(torneio.id, duplasComSeed)
+  return [...jogos, ...jogosBracket]
+}
 
 interface TorneioStore {
   torneios: Torneio[]
@@ -150,12 +201,15 @@ export const useTorneioStore = create<TorneioStore>()(
           const torneio = s.torneios.find(t => t.id === torneioId)
           if (!torneio) return s
 
-          const jogos = torneio.jogos.map(j => j.id === jogoId ? { ...j, ...data } : j)
+          let jogos = torneio.jogos.map(j => j.id === jogoId ? { ...j, ...data } : j)
           const jogoAtualizado = jogos.find(j => j.id === jogoId)!
 
           if (jogoAtualizado.vencedorId) {
             avançarVencedor(jogos, jogoAtualizado)
           }
+
+          // AUTO: se acabou a fase de grupos, gera o mata-mata automaticamente
+          jogos = maybeGerarMataMata(torneio, jogos)
 
           return {
             torneios: s.torneios.map(t =>
