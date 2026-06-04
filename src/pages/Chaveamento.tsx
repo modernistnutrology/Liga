@@ -5,10 +5,10 @@ import Modal from '../components/ui/Modal'
 import LancarResultadoModal from '../components/resultados/LancarResultadoModal'
 import type { Jogo, Dupla } from '../types'
 import { Download, Loader2, Zap } from 'lucide-react'
-import html2canvas from 'html2canvas'
 import { showToast } from '../components/ui/Toast'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
+import { gerarCSVTorneio } from '../utils/exportarCSV'
 
 export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
@@ -66,51 +66,33 @@ export default function Chaveamento() {
   }
 
   async function handleExport() {
-    if (!exportRef.current || !torneio) return
+    if (!torneio) return
     setExporting(true)
     try {
-      // Captura conteúdo completo, mesmo fora da viewport
-      const canvas = await html2canvas(exportRef.current, {
-        backgroundColor: '#062a32',
-        scale: 2,
-        windowWidth: exportRef.current.scrollWidth,
-        windowHeight: exportRef.current.scrollHeight,
-        width: exportRef.current.scrollWidth,
-        height: exportRef.current.scrollHeight,
-        useCORS: true,
-      })
-
+      const csv = gerarCSVTorneio(torneio)
       const safeName = torneio.nome.replace(/[^a-z0-9\-]/gi, '_').toLowerCase()
-      const filename = `chaveamento_${safeName}_${new Date().toISOString().slice(0, 10)}.png`
+      const filename = `torneio_${safeName}_${new Date().toISOString().slice(0, 10)}.csv`
 
-      // Converte canvas em Blob
-      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png'))
-      if (!blob) {
-        showToast('Erro ao gerar imagem', 'error')
-        return
-      }
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const file = new File([blob], filename, { type: 'text/csv' })
 
-      const file = new File([blob], filename, { type: 'image/png' })
-
-      // iOS / mobile: usa Web Share API (abre "Salvar em Arquivos", "Salvar em Fotos", "AirDrop"...)
+      // iOS / mobile: Web Share API (abre menu nativo: Salvar em Arquivos, AirDrop, etc.)
       const nav = navigator as any
       if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
         try {
           await nav.share({
             files: [file],
-            title: `Chaveamento — ${torneio.nome}`,
-            text: `Chaveamento do torneio ${torneio.nome}`,
+            title: `Tabela — ${torneio.nome}`,
+            text: `Resultados do torneio ${torneio.nome}`,
           })
-          showToast('Chaveamento compartilhado!')
+          showToast('Tabela compartilhada!')
           return
         } catch (e: any) {
-          // Usuário cancelou — não mostra erro, mas não cai pro download (já tem o share)
           if (e?.name === 'AbortError') return
-          // Outro erro: cai pro download
         }
       }
 
-      // Desktop / fallback: download direto pra pasta Downloads
+      // Desktop / fallback: download direto
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.download = filename
@@ -119,7 +101,7 @@ export default function Chaveamento() {
       link.click()
       document.body.removeChild(link)
       setTimeout(() => URL.revokeObjectURL(url), 1500)
-      showToast('Chaveamento baixado!', 'success')
+      showToast('Tabela baixada!', 'success')
     } catch (e) {
       showToast('Erro ao exportar', 'error')
       console.error(e)
@@ -163,7 +145,7 @@ export default function Chaveamento() {
           className="btn-secondary flex items-center gap-2 text-sm"
         >
           {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-          {exporting ? 'Exportando...' : 'Exportar PNG'}
+          {exporting ? 'Exportando...' : 'Exportar tabela'}
         </button>
       </div>
 
