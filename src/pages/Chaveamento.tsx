@@ -1,15 +1,47 @@
 ﻿import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Modal from '../components/ui/Modal'
 import LancarResultadoModal from '../components/resultados/LancarResultadoModal'
 import type { Jogo } from '../types'
-import { Download } from 'lucide-react'
+import { Download, Loader2 } from 'lucide-react'
+import html2canvas from 'html2canvas'
+import { showToast } from '../components/ui/Toast'
 
 export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  async function handleExport() {
+    if (!exportRef.current || !torneio) return
+    setExporting(true)
+    try {
+      // Captura o conteúdo COMPLETO (mesmo o que está fora da viewport)
+      const canvas = await html2canvas(exportRef.current, {
+        backgroundColor: '#062a32',
+        scale: 2, // qualidade alta (retina)
+        windowWidth: exportRef.current.scrollWidth,
+        windowHeight: exportRef.current.scrollHeight,
+        width: exportRef.current.scrollWidth,
+        height: exportRef.current.scrollHeight,
+        useCORS: true,
+      })
+      const link = document.createElement('a')
+      const safeName = torneio.nome.replace(/[^a-z0-9\-]/gi, '_').toLowerCase()
+      link.download = `chaveamento_${safeName}_${new Date().toISOString().slice(0, 10)}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+      showToast('Chaveamento exportado!', 'success')
+    } catch (e) {
+      showToast('Erro ao exportar', 'error')
+      console.error(e)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
@@ -41,13 +73,25 @@ export default function Chaveamento() {
       <div className="flex items-center justify-between">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide">CHAVEAMENTO</h1>
         <button
-          onClick={() => window.print()}
+          onClick={handleExport}
+          disabled={exporting}
           className="btn-secondary flex items-center gap-2 text-sm"
         >
-          <Download size={16} />
-          Exportar
+          {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+          {exporting ? 'Exportando...' : 'Exportar PNG'}
         </button>
       </div>
+
+      <div ref={exportRef} className="space-y-6 p-6 bg-teal-950 rounded-2xl border border-teal-800">
+        {/* Branding header (aparece só no PNG exportado) */}
+        <div className="flex items-center gap-3 pb-4 border-b border-teal-800">
+          <img src="/logo.jpg" alt="" className="w-12 h-12 rounded-lg object-cover ring-1 ring-yellow-400/40" />
+          <div>
+            <div className="text-[10px] tracking-[0.3em] text-yellow-300/80 font-semibold">LIGA · VILLAGE PADEL CLUB</div>
+            <div className="font-display text-2xl text-teal-50 tracking-wide leading-none mt-0.5">{torneio.nome}</div>
+            <div className="text-xs text-teal-300 mt-1">{new Date().toLocaleDateString('pt-BR')} · {torneio.esporte}</div>
+          </div>
+        </div>
 
       {/* Groups phase */}
       {jogosGrupos.length > 0 && (
@@ -80,7 +124,7 @@ export default function Chaveamento() {
       {jogosBracket.length > 0 && (
         <div>
           {jogosGrupos.length > 0 && <h2 className="font-display text-2xl text-yellow-300 tracking-wide mb-4">MATA-MATA</h2>}
-          <div className="overflow-x-auto pb-4">
+          <div className={exporting ? 'overflow-visible pb-4' : 'overflow-x-auto pb-4'}>
             <div className="flex gap-6 min-w-max">
               {rodadas.map(r => {
                 const faseJogos = jogosBracket.filter(j => j.rodada === r)
@@ -110,6 +154,7 @@ export default function Chaveamento() {
           </div>
         </div>
       )}
+      </div>
 
       {jogoSelecionado && (
         <Modal title="Lançar Resultado" onClose={() => setJogoSelecionado(null)}>
