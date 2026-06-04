@@ -26,7 +26,14 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
   }
 
   return (
-    <header className="h-14 bg-teal-900 border-b border-teal-800 flex items-center px-3 gap-2 sticky top-0 z-10">
+    <header
+      className="bg-teal-900 border-b border-teal-800 flex items-center px-3 gap-2 sticky top-0 z-10"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'max(0.75rem, env(safe-area-inset-left))',
+        paddingRight: 'max(0.75rem, env(safe-area-inset-right))',
+        minHeight: 'calc(3.5rem + env(safe-area-inset-top))',
+      }}>
       <button
         onClick={onMenuClick}
         className="lg:hidden text-teal-300 hover:text-white p-2 rounded-lg hover:bg-teal-800 transition-colors"

@@ -11,6 +11,18 @@
   }
 }
 
+/* Safe area do iPhone (notch / Dynamic Island) */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-x {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
 @layer components {
   .btn-primary {
     @apply bg-yellow-400 hover:bg-yellow-300 active:bg-yellow-500 text-teal-950 font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-yellow-500/20;

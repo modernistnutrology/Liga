@@ -24,7 +24,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         lg:translate-x-0 lg:static lg:h-auto
       `}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-teal-800">
+        <div className="flex items-center justify-between p-4 border-b border-teal-800 safe-top">
           <div className="flex items-center gap-2 min-w-0">
             <img src="/logo.jpg" alt="Village" className="w-10 h-10 rounded-lg object-cover ring-1 ring-yellow-400/40" />
             <div className="leading-none">

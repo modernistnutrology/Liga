@@ -45,7 +45,7 @@ export default function App() {
 
 function HomeWrapper() {
   return (
-    <div className="min-h-screen bg-teal-950 p-4 lg:p-8">
+    <div className="min-h-screen bg-teal-950 p-4 lg:p-8 safe-top">
       <div className="max-w-5xl mx-auto">
         <Home />
       </div>
@@ -55,7 +55,7 @@ function HomeWrapper() {
 
 function NovoTorneioWrapper() {
   return (
-    <div className="min-h-screen bg-teal-950 p-4 lg:p-8">
+    <div className="min-h-screen bg-teal-950 p-4 lg:p-8 safe-top">
       <NovoTorneio />
     </div>
   )
