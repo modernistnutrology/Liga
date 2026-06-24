@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import Modal from '../components/ui/Modal'
 import LancarResultadoModal from '../components/resultados/LancarResultadoModal'
 import type { Jogo, Dupla } from '../types'
-import { Download, Loader2, Zap } from 'lucide-react'
+import { Download, Loader2, Zap, Edit2 } from 'lucide-react'
 import { showToast } from '../components/ui/Toast'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
@@ -14,8 +14,10 @@ export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
   const setJogos = useTorneioStore(s => s.setJogos)
+  const editarDupla = useTorneioStore(s => s.editarDupla)
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [editandoDuplas, setEditandoDuplas] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
 
   // Detectar se precisa gerar mata-mata (formato grupos + mata-mata)
@@ -137,16 +139,26 @@ export default function Chaveamento() {
 
   return (
     <div className="space-y-6 page-enter">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide">CHAVEAMENTO</h1>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="btn-secondary flex items-center gap-2 text-sm"
-        >
-          {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-          {exporting ? 'Exportando...' : 'Exportar tabela'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setEditandoDuplas(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+            title="Editar nomes das duplas"
+          >
+            <Edit2 size={16} />
+            Editar duplas
+          </button>
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+            {exporting ? 'Exportando...' : 'Exportar tabela'}
+          </button>
+        </div>
       </div>
 
       <div ref={exportRef} className="space-y-6 p-6 bg-teal-950 rounded-2xl border border-teal-800">
@@ -246,6 +258,21 @@ export default function Chaveamento() {
           />
         </Modal>
       )}
+
+      {editandoDuplas && (
+        <Modal title="Editar nomes das duplas" onClose={() => setEditandoDuplas(false)} size="lg">
+          <EditarDuplas
+            duplas={torneio.duplas}
+            jogadores={torneio.jogadores}
+            onSave={(updates) => {
+              updates.forEach(u => editarDupla(id!, u.id, { nome: u.nome }))
+              setEditandoDuplas(false)
+              showToast('Nomes atualizados!', 'success')
+            }}
+            onClose={() => setEditandoDuplas(false)}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -292,6 +319,71 @@ function DuplaRow({ nome, placar, isVencedor, isFinished, isBye }: any) {
           {placar}
         </span>
       )}
+    </div>
+  )
+}
+
+interface EditarDuplasProps {
+  duplas: Dupla[]
+  jogadores: { id: string; nome: string; apelido?: string }[]
+  onSave: (updates: { id: string; nome: string }[]) => void
+  onClose: () => void
+}
+
+function EditarDuplas({ duplas, jogadores, onSave, onClose }: EditarDuplasProps) {
+  const [nomes, setNomes] = useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    duplas.forEach(d => { map[d.id] = d.nome || '' })
+    return map
+  })
+
+  function getJogadorNome(jId: string) {
+    const j = jogadores.find(x => x.id === jId)
+    return j ? (j.apelido || j.nome) : '?'
+  }
+
+  function handleSave() {
+    const updates = duplas
+      .filter(d => nomes[d.id] !== d.nome)
+      .map(d => ({ id: d.id, nome: nomes[d.id].trim() }))
+    onSave(updates)
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-teal-300">
+        Edite os nomes das duplas. As mudanças aparecem em todos os jogos automaticamente.
+      </p>
+
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+        {duplas.map((d, i) => (
+          <div key={d.id} className="flex items-center gap-3">
+            <span className="w-7 h-7 rounded-full bg-teal-800 flex items-center justify-center text-xs font-bold text-yellow-300 flex-shrink-0">
+              {i + 1}
+            </span>
+            <div className="flex-1 min-w-0">
+              <input
+                className="input text-sm"
+                value={nomes[d.id] ?? ''}
+                onChange={e => setNomes(n => ({ ...n, [d.id]: e.target.value }))}
+                placeholder="Nome da dupla"
+              />
+              <div className="text-xs text-teal-400 mt-1 truncate">
+                {getJogadorNome(d.jogador1Id)} & {getJogadorNome(d.jogador2Id)}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 pt-2 border-t border-teal-800">
+        <button onClick={handleSave} className="btn-primary text-sm flex-1">
+          Salvar alterações
+        </button>
+        <button onClick={onClose} className="btn-secondary text-sm">
+          Cancelar
+        </button>
+      </div>
     </div>
   )
 }
