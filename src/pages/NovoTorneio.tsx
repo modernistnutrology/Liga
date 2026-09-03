@@ -207,7 +207,7 @@ export default function NovoTorneio() {
                     </select>
                   </div>
                   <div>
-                    <label className="label">Classif./grupo</label>
+                    <label className="label">Classificados</label>
                     <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
                       {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n} classificado{n > 1 ? 's' : ''}</option>)}
                     </select>
