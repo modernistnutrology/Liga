@@ -195,7 +195,7 @@ export default function NovoTorneio() {
                 </div>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="label">Jogadores/grupo</label>
+                    <label className="label">Jogadores</label>
                     <select className="select" value={form.jogadoresPorGrupo} onChange={e => set('jogadoresPorGrupo', Number(e.target.value))}>
                       {[4, 5, 6, 7, 8, 9, 10, 12].map(n => <option key={n} value={n}>{n} jogadores</option>)}
                     </select>
