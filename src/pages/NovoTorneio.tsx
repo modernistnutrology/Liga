@@ -197,19 +197,19 @@ export default function NovoTorneio() {
                   <div>
                     <label className="label">Jogadores/grupo</label>
                     <select className="select" value={form.jogadoresPorGrupo} onChange={e => set('jogadoresPorGrupo', Number(e.target.value))}>
-                      {[4, 5, 6, 7, 8, 9, 10, 12].map(n => <option key={n} value={n}>{n} jog.</option>)}
+                      {[4, 5, 6, 7, 8, 9, 10, 12].map(n => <option key={n} value={n}>{n} jogadores</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="label">Nº grupos</label>
                     <select className="select" value={form.totalGrupos} onChange={e => set('totalGrupos', Number(e.target.value))}>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16].map(n => <option key={n} value={n}>{n}</option>)}
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16].map(n => <option key={n} value={n}>{n} grupo{n > 1 ? 's' : ''}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="label">Classif./grupo</label>
                     <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
-                      {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
+                      {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n} classificado{n > 1 ? 's' : ''}</option>)}
                     </select>
                   </div>
                 </div>
