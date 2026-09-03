@@ -1,5 +1,6 @@
 import type { Torneio } from '../types'
 import { calcularClassificacao } from './calcularClassificacao'
+import { calcularRankingReizinho } from './gerarReizinho'
 
 function csvEscape(value: string | number | undefined): string {
   if (value == null) return ''
@@ -39,25 +40,71 @@ export function gerarCSVTorneio(torneio: Torneio): string {
   lines.push(csvRow([`Exportado em:`, new Date().toLocaleString('pt-BR')]))
   lines.push(sep)
 
+  const isReizinho = torneio.formato === 'reizinho'
+
   // Classificação por grupo
   if (torneio.grupos.length > 0) {
-    lines.push(csvRow(['=== CLASSIFICAÇÃO POR GRUPO ===']))
+    lines.push(csvRow([isReizinho ? '=== CLASSIFICAÇÃO INDIVIDUAL POR GRUPO ===' : '=== CLASSIFICAÇÃO POR GRUPO ===']))
     lines.push(sep)
-    for (const grupo of torneio.grupos) {
-      const duplasGrupo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
-      const ranking = calcularClassificacao(duplasGrupo, torneio.jogos, grupo.nome)
-      lines.push(csvRow([grupo.nome]))
-      lines.push(csvRow(['Pos', 'Dupla', 'PJ', 'V', 'D', 'W.O.', 'PTS', 'Saldo', '%']))
-      ranking.forEach((l, i) => {
+
+    if (isReizinho) {
+      // Ranking geral primeiro
+      const rankingGeral: any[] = []
+      for (const grupo of torneio.grupos) {
+        const jogadoresIds = new Set<string>()
+        torneio.duplas.filter(d => grupo.duplas.includes(d.id)).forEach(d => {
+          jogadoresIds.add(d.jogador1Id); jogadoresIds.add(d.jogador2Id)
+        })
+        const jogadores = torneio.jogadores.filter(j => jogadoresIds.has(j.id))
+        rankingGeral.push(...calcularRankingReizinho(jogadores, torneio.duplas, torneio.jogos, grupo.nome))
+      }
+      rankingGeral.sort((a, b) => b.pontos - a.pontos || b.vitorias - a.vitorias || b.saldo - a.saldo)
+
+      lines.push(csvRow(['RANKING GERAL — INDIVIDUAL']))
+      lines.push(csvRow(['Pos', 'Jogador', 'Jogos', 'Vitórias', 'Derrotas', 'Pontos', 'Saldo']))
+      rankingGeral.forEach((r, i) => {
         lines.push(csvRow([
-          i + 1,
-          l.dupla.nome || 'Dupla',
-          l.pj, l.v, l.d, l.wo, l.pts,
-          l.sg > 0 ? `+${l.sg}` : l.sg,
-          `${l.pct}%`,
+          i + 1, r.jogador.apelido || r.jogador.nome,
+          r.jogos, r.vitorias, r.derrotas, r.pontos,
+          r.saldo > 0 ? `+${r.saldo}` : r.saldo,
         ]))
       })
       lines.push(sep)
+
+      // Por grupo
+      for (const grupo of torneio.grupos) {
+        const jogadoresIds = new Set<string>()
+        torneio.duplas.filter(d => grupo.duplas.includes(d.id)).forEach(d => {
+          jogadoresIds.add(d.jogador1Id); jogadoresIds.add(d.jogador2Id)
+        })
+        const jogadores = torneio.jogadores.filter(j => jogadoresIds.has(j.id))
+        const ranking = calcularRankingReizinho(jogadores, torneio.duplas, torneio.jogos, grupo.nome)
+        lines.push(csvRow([grupo.nome]))
+        lines.push(csvRow(['Pos', 'Jogador', 'Jogos', 'Vitórias', 'Derrotas', 'Pontos', 'Saldo']))
+        ranking.forEach((r, i) => {
+          lines.push(csvRow([
+            i + 1, r.jogador.apelido || r.jogador.nome,
+            r.jogos, r.vitorias, r.derrotas, r.pontos,
+            r.saldo > 0 ? `+${r.saldo}` : r.saldo,
+          ]))
+        })
+        lines.push(sep)
+      }
+    } else {
+      for (const grupo of torneio.grupos) {
+        const duplasGrupo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
+        const ranking = calcularClassificacao(duplasGrupo, torneio.jogos, grupo.nome)
+        lines.push(csvRow([grupo.nome]))
+        lines.push(csvRow(['Pos', 'Dupla', 'PJ', 'V', 'D', 'W.O.', 'PTS', 'Saldo', '%']))
+        ranking.forEach((l, i) => {
+          lines.push(csvRow([
+            i + 1, l.dupla.nome || 'Dupla',
+            l.pj, l.v, l.d, l.wo, l.pts,
+            l.sg > 0 ? `+${l.sg}` : l.sg, `${l.pct}%`,
+          ]))
+        })
+        lines.push(sep)
+      }
     }
   } else if (torneio.formato === 'pontos_corridos') {
     // Pontos corridos sem grupos: classificação geral

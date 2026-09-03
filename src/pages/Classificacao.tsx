@@ -1,7 +1,9 @@
-﻿import { useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
-import { BarChart2 } from 'lucide-react'
+import { calcularRankingReizinho } from '../utils/gerarReizinho'
+import type { RankingJogador } from '../utils/gerarReizinho'
+import { BarChart2, Crown } from 'lucide-react'
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>()
@@ -9,41 +11,131 @@ export default function Classificacao() {
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
-  const isGrupos = torneio.formato === 'grupos_e_mata_mata' || torneio.formato === 'pontos_corridos'
-
+  const isReizinho = torneio.formato === 'reizinho'
   const classificacaoGeral = calcularClassificacao(torneio.duplas, torneio.jogos)
 
   return (
     <div className="space-y-6 page-enter">
-      <h1 className="font-display text-4xl text-teal-50 tracking-wide">CLASSIFICAÇÃO</h1>
+      <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
+        {isReizinho && <Crown className="text-yellow-300" size={28} />}
+        CLASSIFICAÇÃO
+      </h1>
 
       {torneio.duplas.length === 0 ? (
         <div className="text-center py-20 text-teal-600">
           <BarChart2 size={48} className="mx-auto mb-3 opacity-30" />
           <p>Nenhuma dupla cadastrada.</p>
         </div>
+      ) : isReizinho ? (
+        <ClassificacaoReizinho torneio={torneio} />
+      ) : torneio.grupos.length > 0 ? (
+        <div className="space-y-6">
+          {torneio.grupos.map((grupo) => {
+            const duplasDo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
+            const linhas = calcularClassificacao(duplasDo, torneio.jogos, grupo.nome)
+            const classificados = torneio.classificadosPorGrupo ?? 2
+            return (
+              <div key={grupo.id}>
+                <h3 className="font-display text-2xl text-yellow-300 tracking-wide mb-3">{grupo.nome}</h3>
+                <TabelaClass linhas={linhas} classificados={classificados} />
+              </div>
+            )
+          })}
+        </div>
       ) : (
-        <>
-          {/* By groups if applicable */}
-          {torneio.grupos.length > 0 ? (
-            <div className="space-y-6">
-              {torneio.grupos.map((grupo, gi) => {
-                const duplasDo = torneio.duplas.filter(d => grupo.duplas.includes(d.id))
-                const linhas = calcularClassificacao(duplasDo, torneio.jogos, grupo.nome)
-                const classificados = torneio.classificadosPorGrupo ?? 2
-                return (
-                  <div key={grupo.id}>
-                    <h3 className="font-display text-2xl text-yellow-300 tracking-wide mb-3">{grupo.nome}</h3>
-                    <TabelaClass linhas={linhas} classificados={classificados} />
-                  </div>
-                )
-              })}
-            </div>
-          ) : (
-            <TabelaClass linhas={classificacaoGeral} classificados={0} />
-          )}
-        </>
+        <TabelaClass linhas={classificacaoGeral} classificados={0} />
       )}
+    </div>
+  )
+}
+
+function ClassificacaoReizinho({ torneio }: any) {
+  const classificados = torneio.classificadosPorGrupo ?? 2
+
+  // Ranking individual POR GRUPO
+  const rankingsPorGrupo = torneio.grupos.map((grupo: any) => {
+    const jogadoresIds = new Set<string>()
+    torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id)).forEach((d: any) => {
+      jogadoresIds.add(d.jogador1Id)
+      jogadoresIds.add(d.jogador2Id)
+    })
+    const jogadores = torneio.jogadores.filter((j: any) => jogadoresIds.has(j.id))
+    const ranking = calcularRankingReizinho(jogadores, torneio.duplas, torneio.jogos, grupo.nome)
+    return { grupo, ranking }
+  })
+
+  // Ranking individual GERAL (todos os grupos combinados)
+  const rankingGeral: RankingJogador[] = []
+  rankingsPorGrupo.forEach(({ ranking }: any) => {
+    rankingGeral.push(...ranking)
+  })
+  rankingGeral.sort((a, b) => {
+    if (b.pontos !== a.pontos) return b.pontos - a.pontos
+    if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias
+    return b.saldo - a.saldo
+  })
+
+  return (
+    <div className="space-y-8">
+      {/* Ranking geral */}
+      <div>
+        <h2 className="font-display text-2xl text-yellow-300 tracking-wide mb-3 flex items-center gap-2">
+          <Crown size={22} /> RANKING GERAL — INDIVIDUAL
+        </h2>
+        <TabelaReizinho ranking={rankingGeral} destaqueTop={3} />
+      </div>
+
+      {/* Por grupo */}
+      {rankingsPorGrupo.map(({ grupo, ranking }: any) => (
+        <div key={grupo.id}>
+          <h3 className="font-display text-xl text-yellow-300 tracking-wide mb-3">{grupo.nome}</h3>
+          <TabelaReizinho ranking={ranking} destaqueTop={classificados} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TabelaReizinho({ ranking, destaqueTop }: { ranking: RankingJogador[]; destaqueTop: number }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
+              <th className="px-4 py-3 text-left">Pos</th>
+              <th className="px-4 py-3 text-left">Jogador</th>
+              <th className="px-3 py-3 text-center">J</th>
+              <th className="px-3 py-3 text-center">V</th>
+              <th className="px-3 py-3 text-center">D</th>
+              <th className="px-3 py-3 text-center">PTS</th>
+              <th className="px-3 py-3 text-center">Saldo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ranking.map((r, i) => (
+              <tr key={r.jogador.id}
+                className={`border-b border-teal-800/50 transition-colors
+                  ${destaqueTop > 0 && i < destaqueTop ? 'bg-emerald-500/5 border-l-2 border-l-emerald-500' : ''}
+                `}
+              >
+                <td className="px-4 py-3">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
+                    ${i === 0 ? 'bg-yellow-400 text-teal-950' : i === 1 ? 'bg-teal-600 text-white' : i === 2 ? 'bg-yellow-600 text-white' : 'bg-teal-800 text-teal-300'}`}>
+                    {i + 1}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-medium text-teal-50">{r.jogador.apelido || r.jogador.nome}</td>
+                <td className="px-3 py-3 text-center text-teal-200">{r.jogos}</td>
+                <td className="px-3 py-3 text-center text-emerald-400 font-semibold">{r.vitorias}</td>
+                <td className="px-3 py-3 text-center text-red-400">{r.derrotas}</td>
+                <td className="px-3 py-3 text-center font-bold text-yellow-300">{r.pontos}</td>
+                <td className="px-3 py-3 text-center text-teal-200">{r.saldo > 0 ? `+${r.saldo}` : r.saldo}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
