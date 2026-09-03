@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target, Crown } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { FormatoTorneio } from '../types'
@@ -12,6 +12,7 @@ const formatos: { value: FormatoTorneio; label: string; desc: string; Icon: Luci
   { value: 'dupla_eliminacao', label: 'Dupla Eliminação', desc: 'Dois perdedores são eliminados', Icon: Repeat },
   { value: 'pontos_corridos', label: 'Pontos Corridos', desc: 'Todos jogam contra todos', Icon: BarChart2 },
   { value: 'grupos_e_mata_mata', label: 'Grupos + Mata-mata', desc: 'Fase de grupos e depois bracket', Icon: Target },
+  { value: 'reizinho', label: 'Reizinho (Rodízio)', desc: 'Jogadores individuais rotacionam parceiros nos grupos; mata-mata forma duplas com os melhores', Icon: Crown },
 ]
 
 interface FormData {
@@ -25,6 +26,7 @@ interface FormData {
   maxDuplas: number
   totalGrupos: number
   classificadosPorGrupo: number
+  jogadoresPorGrupo: number
   tipoContagem: 'sets' | 'games' | 'pontos' | 'simples'
 }
 
@@ -39,6 +41,7 @@ const initial: FormData = {
   maxDuplas: 8,
   totalGrupos: 2,
   classificadosPorGrupo: 2,
+  jogadoresPorGrupo: 4,
   tipoContagem: 'sets',
 }
 
@@ -63,6 +66,7 @@ export default function NovoTorneio() {
       maxDuplas: form.maxDuplas,
       totalGrupos: form.totalGrupos,
       classificadosPorGrupo: form.classificadosPorGrupo,
+      jogadoresPorGrupo: form.jogadoresPorGrupo,
       tipoContagem: form.tipoContagem,
       status: 'configurando',
     })
@@ -156,12 +160,14 @@ export default function NovoTorneio() {
               </div>
             </div>
 
-            <div>
-              <label className="label">Máximo de duplas</label>
-              <select className="select" value={form.maxDuplas} onChange={e => set('maxDuplas', Number(e.target.value))}>
-                {[4, 8, 16, 32, 64].map(n => <option key={n} value={n}>{n} duplas</option>)}
-              </select>
-            </div>
+            {form.formato !== 'reizinho' && (
+              <div>
+                <label className="label">Máximo de duplas</label>
+                <select className="select" value={form.maxDuplas} onChange={e => set('maxDuplas', Number(e.target.value))}>
+                  {[4, 8, 16, 32, 64].map(n => <option key={n} value={n}>{n} duplas</option>)}
+                </select>
+              </div>
+            )}
 
             {form.formato === 'grupos_e_mata_mata' && (
               <div className="grid grid-cols-2 gap-3">
@@ -178,6 +184,36 @@ export default function NovoTorneio() {
                   </select>
                 </div>
               </div>
+            )}
+
+            {form.formato === 'reizinho' && (
+              <>
+                <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-3 text-xs text-yellow-100">
+                  <strong className="text-yellow-300">Reizinho:</strong> jogadores individuais.
+                  No grupo, cada jogador joga uma vez com cada outro como parceiro.
+                  Pontuação é individual. No mata-mata, os melhores classificados formam duplas.
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="label">Jogadores/grupo</label>
+                    <select className="select" value={form.jogadoresPorGrupo} onChange={e => set('jogadoresPorGrupo', Number(e.target.value))}>
+                      {[4, 5, 6].map(n => <option key={n} value={n}>{n} jog.</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Nº grupos</label>
+                    <select className="select" value={form.totalGrupos} onChange={e => set('totalGrupos', Number(e.target.value))}>
+                      {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Classif./grupo</label>
+                    <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
+                      {[2, 4].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </>
             )}
 
             <div>

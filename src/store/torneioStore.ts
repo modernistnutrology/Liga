@@ -4,12 +4,76 @@ import type { Torneio, Jogador, Dupla, Jogo, Grupo } from '../types'
 import { nanoid } from '../utils/nanoid'
 import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
+import { calcularRankingReizinho } from '../utils/gerarReizinho'
+
+/**
+ * Retorna as duplas atualizadas se o reizinho gerou novas duplas para o mata-mata.
+ */
+function maybeGerarMataMataReizinho(
+  torneio: Torneio,
+  jogos: Jogo[],
+  duplas: Dupla[]
+): { jogos: Jogo[]; duplas: Dupla[] } {
+  const grupoFases = torneio.grupos.map(g => g.nome)
+  const jogosDeGrupo = jogos.filter(j => grupoFases.includes(j.fase))
+  const jogosDeMataMata = jogos.filter(j => !grupoFases.includes(j.fase))
+
+  if (jogosDeMataMata.length > 0) return { jogos, duplas } // já tem mata-mata
+  const todosGruposFinalizados = jogosDeGrupo.length > 0 &&
+    jogosDeGrupo.every(j => j.status === 'finalizado' || j.status === 'wo')
+  if (!todosGruposFinalizados) return { jogos, duplas }
+
+  // Reizinho: pega top-N JOGADORES de cada grupo
+  const classificadosPorGrupo = torneio.classificadosPorGrupo ?? 2
+  const classificadosOrdenados: { jogadorId: string; grupoNome: string; posicao: number; pontos: number }[] = []
+
+  for (const grupo of torneio.grupos) {
+    const jogadoresDoGrupo = torneio.jogadores.filter(j =>
+      duplas.some(d => grupo.duplas.includes(d.id) && (d.jogador1Id === j.id || d.jogador2Id === j.id))
+    )
+    const ranking = calcularRankingReizinho(jogadoresDoGrupo, duplas, jogos, grupo.nome)
+    ranking.slice(0, classificadosPorGrupo).forEach((r, pos) => {
+      classificadosOrdenados.push({ jogadorId: r.jogador.id, grupoNome: grupo.nome, posicao: pos, pontos: r.pontos })
+    })
+  }
+
+  // Ordena por pontos (mais forte primeiro)
+  classificadosOrdenados.sort((a, b) => b.pontos - a.pontos)
+
+  if (classificadosOrdenados.length < 4) return { jogos, duplas }
+
+  // Forma duplas: melhor + 2º melhor, 3º + 4º, etc.
+  const novasDuplas: Dupla[] = []
+  for (let i = 0; i < classificadosOrdenados.length - 1; i += 2) {
+    const p1 = classificadosOrdenados[i]
+    const p2 = classificadosOrdenados[i + 1]
+    const j1 = torneio.jogadores.find(x => x.id === p1.jogadorId)
+    const j2 = torneio.jogadores.find(x => x.id === p2.jogadorId)
+    novasDuplas.push({
+      id: nanoid(),
+      jogador1Id: p1.jogadorId,
+      jogador2Id: p2.jogadorId,
+      nome: `${j1?.apelido || j1?.nome} & ${j2?.apelido || j2?.nome}`,
+      seed: novasDuplas.length + 1,
+      criadoEm: new Date().toISOString(),
+    })
+  }
+
+  if (novasDuplas.length < 2) return { jogos, duplas }
+
+  const jogosBracket = gerarChaveamentoEliminatorio(torneio.id, novasDuplas)
+  return {
+    jogos: [...jogos, ...jogosBracket],
+    duplas: [...duplas, ...novasDuplas],
+  }
+}
 
 /**
  * Quando o último jogo da fase de grupos é finalizado, gera automaticamente
  * o mata-mata com os classificados. Retorna a nova lista de jogos.
  */
 function maybeGerarMataMata(torneio: Torneio, jogos: Jogo[]): Jogo[] {
+  if (torneio.formato === 'reizinho') return jogos // tratado em separado
   if (torneio.formato !== 'grupos_e_mata_mata') return jogos
   if (torneio.grupos.length === 0) return jogos
 
@@ -209,11 +273,18 @@ export const useTorneioStore = create<TorneioStore>()(
           }
 
           // AUTO: se acabou a fase de grupos, gera o mata-mata automaticamente
-          jogos = maybeGerarMataMata(torneio, jogos)
+          let novasDuplas = torneio.duplas
+          if (torneio.formato === 'reizinho') {
+            const res = maybeGerarMataMataReizinho(torneio, jogos, novasDuplas)
+            jogos = res.jogos
+            novasDuplas = res.duplas
+          } else {
+            jogos = maybeGerarMataMata(torneio, jogos)
+          }
 
           return {
             torneios: s.torneios.map(t =>
-              t.id === torneioId ? { ...t, jogos, atualizadoEm: new Date().toISOString() } : t
+              t.id === torneioId ? { ...t, jogos, duplas: novasDuplas, atualizadoEm: new Date().toISOString() } : t
             ),
           }
         })

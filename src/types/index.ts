@@ -3,6 +3,7 @@ export type FormatoTorneio =
   | 'grupos_e_mata_mata'
   | 'pontos_corridos'
   | 'dupla_eliminacao'
+  | 'reizinho'
 
 export type StatusJogo = 'aguardando' | 'em_andamento' | 'finalizado' | 'wo'
 export type StatusTorneio = 'configurando' | 'em_andamento' | 'finalizado'
@@ -63,6 +64,7 @@ export interface Torneio {
   maxDuplas: number
   totalGrupos?: number
   classificadosPorGrupo?: number
+  jogadoresPorGrupo?: number  // usado no formato "reizinho"
   tipoContagem: 'sets' | 'games' | 'pontos' | 'simples'
   jogadores: Jogador[]
   duplas: Dupla[]

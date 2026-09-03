@@ -1,9 +1,10 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
-import { Shuffle, Check, AlertTriangle, ArrowRight, Star } from 'lucide-react'
+import { Shuffle, Check, AlertTriangle, ArrowRight, Star, Crown } from 'lucide-react'
 import { sortearDuplas, shuffleArray } from '../utils/sorteioUtils'
 import { gerarChaveamentoEliminatorio, gerarJogosGrupos } from '../utils/gerarChaveamento'
+import { gerarJogosReizinhoGrupo, distribuirJogadoresEmGrupos } from '../utils/gerarReizinho'
 import { distribuirEmGrupos } from '../utils/sorteioUtils'
 import { nanoid } from '../utils/nanoid'
 import { showToast } from '../components/ui/Toast'
@@ -113,6 +114,132 @@ export default function Sorteio() {
     store.atualizarTorneio(id!, { status: 'em_andamento' })
     setConfirmado(true)
     showToast('Chaveamento gerado!')
+  }
+
+  // === REIZINHO ===
+  function handleSortearReizinho() {
+    const numGrupos = torneio!.totalGrupos || 2
+    const jogadoresPorGrupo = torneio!.jogadoresPorGrupo || 4
+    const total = torneio!.jogadores.length
+    const min = numGrupos * jogadoresPorGrupo
+
+    if (total < min) {
+      showToast(`Precisa de ${min} jogadores (${jogadoresPorGrupo}×${numGrupos})`, 'error')
+      return
+    }
+
+    const allNames = torneio!.jogadores.map(j => j.apelido || j.nome)
+    runSlotAnimation(allNames, () => {
+      const shuffled = shuffleArray(torneio!.jogadores)
+      const usados = shuffled.slice(0, min)
+      const idsPorGrupo = distribuirJogadoresEmGrupos(usados.map(j => j.id), numGrupos)
+
+      // Cria os grupos + jogos + duplas temporárias
+      const novosGrupos = idsPorGrupo.map((playerIds, i) => ({
+        id: nanoid(),
+        nome: `Grupo ${String.fromCharCode(65 + i)}`,
+        duplas: [] as string[], // preenchido abaixo
+      }))
+      let todasDuplas: Dupla[] = []
+      let todosJogos: any[] = []
+      idsPorGrupo.forEach((playerIds, i) => {
+        const { duplas, jogos: jgs } = gerarJogosReizinhoGrupo(id!, playerIds, novosGrupos[i].nome)
+        novosGrupos[i].duplas = duplas.map(d => d.id)
+        todasDuplas = [...todasDuplas, ...duplas]
+        todosJogos = [...todosJogos, ...jgs]
+      })
+
+      // Grava tudo de uma vez preservando os IDs originais
+      store.atualizarTorneio(id!, {
+        duplas: [...torneio!.duplas, ...todasDuplas],
+        grupos: novosGrupos,
+        jogos: todosJogos,
+        status: 'em_andamento',
+      })
+      setConfirmado(true)
+      showToast('Reizinho gerado! Rodadas prontas.')
+    })
+  }
+
+  const isReizinho = torneio.formato === 'reizinho'
+
+  // Se for reizinho, exibe UI dedicada
+  if (isReizinho) {
+    const numGrupos = torneio.totalGrupos || 2
+    const jogadoresPorGrupo = torneio.jogadoresPorGrupo || 4
+    const minJog = numGrupos * jogadoresPorGrupo
+    const jaGerado = torneio.grupos.length > 0
+
+    return (
+      <div className="space-y-6 page-enter max-w-2xl">
+        <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
+          <Crown className="text-yellow-300" size={32} />
+          SORTEIO REIZINHO
+        </h1>
+
+        <div className="card p-4 space-y-3">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <div className="font-display text-3xl text-yellow-300">{torneio.jogadores.length}</div>
+              <div className="text-xs text-teal-300 uppercase tracking-wider mt-0.5">Jogadores</div>
+            </div>
+            <div>
+              <div className="font-display text-3xl text-yellow-300">{numGrupos}</div>
+              <div className="text-xs text-teal-300 uppercase tracking-wider mt-0.5">Grupos</div>
+            </div>
+            <div>
+              <div className="font-display text-3xl text-yellow-300">{jogadoresPorGrupo}</div>
+              <div className="text-xs text-teal-300 uppercase tracking-wider mt-0.5">Por grupo</div>
+            </div>
+          </div>
+          <p className="text-xs text-teal-300 border-t border-teal-800 pt-3">
+            Precisa de <strong className="text-yellow-300">{minJog} jogadores</strong>.
+            {' '}Cada jogador vai jogar como parceiro de cada outro do grupo.
+          </p>
+        </div>
+
+        {torneio.jogadores.length < minJog && (
+          <div className="flex items-center gap-2 text-yellow-300 text-sm bg-yellow-400/10 px-3 py-2 rounded-lg border border-yellow-400/20">
+            <AlertTriangle size={16} />
+            Adicione mais {minJog - torneio.jogadores.length} jogador(es) para começar
+          </div>
+        )}
+
+        {jaGerado && (
+          <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20">
+            <Check size={16} />
+            Reizinho já sorteado. Refazer vai apagar os resultados.
+          </div>
+        )}
+
+        <button
+          onClick={handleSortearReizinho}
+          disabled={animating || torneio.jogadores.length < minJog}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Shuffle size={18} className={animating ? 'animate-spin' : ''} />
+          {jaGerado ? 'Sortear novamente' : 'Sortear grupos e rodadas'}
+        </button>
+
+        {animating && (
+          <div className="card p-6 text-center">
+            <div className="flex flex-wrap gap-2 justify-center">
+              {displayNames.map((n, i) => (
+                <span key={i} className="slot-spin bg-yellow-400/20 text-yellow-300 px-3 py-1.5 rounded-lg font-mono font-bold text-sm border border-yellow-400/30 min-w-[80px] inline-block text-center">
+                  {n}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {confirmado && (
+          <button onClick={() => navigate(`/torneio/${id}/chaveamento`)} className="btn-primary flex items-center gap-2 text-sm">
+            Ver rodadas <ArrowRight size={14} />
+          </button>
+        )}
+      </div>
+    )
   }
 
   return (
