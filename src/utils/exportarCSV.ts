@@ -28,7 +28,11 @@ export function gerarCSVTorneio(torneio: Torneio): string {
 
   function getDuplaNome(id: string | null | undefined): string {
     if (!id) return 'BYE'
-    return torneio.duplas.find(d => d.id === id)?.nome || 'Dupla ?'
+    const d = torneio.duplas.find(x => x.id === id)
+    if (d?.nome) return d.nome
+    const j1 = torneio.jogadores.find(x => x.id === d?.jogador1Id)
+    const j2 = torneio.jogadores.find(x => x.id === d?.jogador2Id)
+    return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
   }
 
   // Cabeçalho

@@ -254,7 +254,7 @@ export default function Participantes() {
                           {i + 1}
                         </div>
                         <div className="min-w-0">
-                          <div className="font-medium text-teal-50 truncate">{d.nome || `Dupla ${i + 1}`}</div>
+                          <div className="font-medium text-teal-50 truncate">{d.nome || `${getJogadorNome(d.jogador1Id)} / ${getJogadorNome(d.jogador2Id)}`}</div>
                           <div className="text-xs text-teal-300">
                             {getJogadorNome(d.jogador1Id)} & {getJogadorNome(d.jogador2Id)}
                             {d.seed && <span className="ml-2 text-yellow-300 inline-flex items-center gap-0.5"><Star size={10} fill="currentColor" /> Seed {d.seed}</span>}

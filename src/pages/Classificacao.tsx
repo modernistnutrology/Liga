@@ -37,13 +37,13 @@ export default function Classificacao() {
             return (
               <div key={grupo.id}>
                 <h3 className="font-display text-2xl text-yellow-300 tracking-wide mb-3">{grupo.nome}</h3>
-                <TabelaClass linhas={linhas} classificados={classificados} />
+                <TabelaClass linhas={linhas} classificados={classificados} jogadores={torneio.jogadores} />
               </div>
             )
           })}
         </div>
       ) : (
-        <TabelaClass linhas={classificacaoGeral} classificados={0} />
+        <TabelaClass linhas={classificacaoGeral} classificados={0} jogadores={torneio.jogadores} />
       )}
     </div>
   )
@@ -140,7 +140,14 @@ function TabelaReizinho({ ranking, destaqueTop }: { ranking: RankingJogador[]; d
   )
 }
 
-function TabelaClass({ linhas, classificados }: { linhas: any[]; classificados: number }) {
+function TabelaClass({ linhas, classificados, jogadores }: { linhas: any[]; classificados: number; jogadores: any[] }) {
+  function displayNome(dupla: any, i: number) {
+    if (dupla?.nome) return dupla.nome
+    const j1 = jogadores.find((x: any) => x.id === dupla?.jogador1Id)
+    const j2 = jogadores.find((x: any) => x.id === dupla?.jogador2Id)
+    if (j1 || j2) return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
+    return `Dupla ${i + 1}`
+  }
   return (
     <div className="card overflow-hidden">
       <div className="overflow-x-auto">
@@ -172,7 +179,7 @@ function TabelaClass({ linhas, classificados }: { linhas: any[]; classificados: 
                     {i + 1}
                   </span>
                 </td>
-                <td className="px-4 py-3 font-medium text-teal-50">{l.dupla.nome || `Dupla ${i + 1}`}</td>
+                <td className="px-4 py-3 font-medium text-teal-50">{displayNome(l.dupla, i)}</td>
                 <td className="px-3 py-3 text-center text-teal-200">{l.pj}</td>
                 <td className="px-3 py-3 text-center text-emerald-400 font-semibold">{l.v}</td>
                 <td className="px-3 py-3 text-center text-red-400">{l.d}</td>

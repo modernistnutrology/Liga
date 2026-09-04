@@ -163,6 +163,14 @@ export default function Sorteio() {
 
   const isReizinho = torneio.formato === 'reizinho'
 
+  function nomeDupla(d: any, fallbackIdx?: number): string {
+    if (d?.nome) return d.nome
+    const j1 = torneio!.jogadores.find(x => x.id === d?.jogador1Id)
+    const j2 = torneio!.jogadores.find(x => x.id === d?.jogador2Id)
+    if (j1 || j2) return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
+    return fallbackIdx != null ? `Dupla ${fallbackIdx + 1}` : 'Dupla'
+  }
+
   // Se for reizinho, exibe UI dedicada
   if (isReizinho) {
     const numGrupos = torneio.totalGrupos || 2
@@ -345,7 +353,7 @@ export default function Sorteio() {
               {torneio.duplas.map((d, i) => (
                 <span key={d.id} className="flex items-center gap-1.5 bg-teal-800 text-teal-100 px-3 py-1 rounded-full text-sm">
                   {d.seed && <span className="text-yellow-300 text-xs flex items-center gap-0.5"><Star size={10} fill="currentColor" />{d.seed}</span>}
-                  {d.nome || `Dupla ${i + 1}`}
+                  {nomeDupla(d, i)}
                 </span>
               ))}
             </div>
@@ -378,7 +386,7 @@ export default function Sorteio() {
               {resultadoChave.map((d, i) => (
                 <div key={d.id} className="card p-3 flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full bg-teal-700 text-teal-100 flex items-center justify-center text-xs font-bold flex-shrink-0">{i + 1}</span>
-                  <span className="font-medium text-teal-50">{d.nome || `Dupla ${i + 1}`}</span>
+                  <span className="font-medium text-teal-50">{nomeDupla(d, i)}</span>
                   {d.seed && <span className="ml-auto text-yellow-300 text-xs flex items-center gap-1"><Star size={10} fill="currentColor" /> Seed {d.seed}</span>}
                 </div>
               ))}

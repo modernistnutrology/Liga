@@ -126,7 +126,10 @@ export default function Chaveamento() {
   function getDuplaNome(duplaId: string | null) {
     if (!duplaId) return 'BYE'
     const d = torneio!.duplas.find(x => x.id === duplaId)
-    return d?.nome || 'Dupla ?'
+    if (d?.nome) return d.nome
+    const j1 = torneio!.jogadores.find(x => x.id === d?.jogador1Id)
+    const j2 = torneio!.jogadores.find(x => x.id === d?.jogador2Id)
+    return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
   }
 
   // Group by rodada

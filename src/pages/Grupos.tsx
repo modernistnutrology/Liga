@@ -102,7 +102,12 @@ function RankingDuplas({ torneio, grupo, classificados }: any) {
                 <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
                   ${i === 0 ? 'bg-yellow-400 text-teal-950' : 'bg-teal-800 text-teal-300'}`}>{i + 1}</span>
               </td>
-              <td className="py-2 font-medium text-teal-100 truncate max-w-[120px]">{l.dupla.nome || `Dupla`}</td>
+              <td className="py-2 font-medium text-teal-100 truncate max-w-[140px]">{(() => {
+                if (l.dupla.nome) return l.dupla.nome
+                const j1 = torneio.jogadores.find((x: any) => x.id === l.dupla.jogador1Id)
+                const j2 = torneio.jogadores.find((x: any) => x.id === l.dupla.jogador2Id)
+                return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
+              })()}</td>
               <td className="py-2 text-center text-teal-300">{l.pj}</td>
               <td className="py-2 text-center text-emerald-400">{l.v}</td>
               <td className="py-2 text-center font-bold text-yellow-300">{l.pts}</td>
