@@ -15,9 +15,11 @@ import { nanoid } from './nanoid'
  */
 export function gerarJogosReizinhoGrupo(
   torneioId: string,
-  playerIds: string[],
+  playerIdsRaw: string[],
   grupoNome: string
 ): { duplas: Dupla[]; jogos: Jogo[] } {
+  // Dedup — evita jogador aparecer 2x no grupo (o que geraria par (X, X))
+  const playerIds = Array.from(new Set(playerIdsRaw))
   const n = playerIds.length
   const duplas: Dupla[] = []
   const jogos: Jogo[] = []
@@ -42,92 +44,85 @@ export function gerarJogosReizinhoGrupo(
     return d
   }
 
-  // Todos os pares (parcerias) que ainda precisam jogar juntos
-  const paresPendentes: [string, string][] = []
+  // Estratégia: para cada partnership (par de jogadores), garantir 1 jogo onde ela aparece.
+  // Cada jogo tem 2 partnerships. Iteramos os pares em ordem; para cada par ainda não
+  // "coberto", achamos oponente compatível (sem overlap de jogador). Se necessário, o
+  // oponente pode ser uma partnership já usada em outro jogo.
+  const todosPares: [string, string][] = []
   for (let i = 0; i < n; i++) {
-    for (let j = i + 1; j < n; j++) {
-      paresPendentes.push([playerIds[i], playerIds[j]])
-    }
+    for (let j = i + 1; j < n; j++) todosPares.push([playerIds[i], playerIds[j]])
   }
+  const key = (a: string, b: string) => [a, b].sort().join('|')
+  const cobertos = new Set<string>()
 
   let rodada = 1
   let posicao = 0
-  let safety = paresPendentes.length * 4 // trava contra loop infinito
+  const usadosNaRodada = new Set<string>()
+  let jogosNaRodada = 0
+  const maxJogosPorRodada = Math.floor(n / 4) // 1 court = 1 jogo por rodada (usa 4 jogadores)
 
-  while (paresPendentes.length > 0 && safety-- > 0) {
-    // Cada rodada: cada jogador aparece em no máximo 1 jogo
-    const usados = new Set<string>()
-    let jogoNaRodada = false
-
-    let i = 0
-    while (i < paresPendentes.length) {
-      const [a1, a2] = paresPendentes[i]
-      if (usados.has(a1) || usados.has(a2)) { i++; continue }
-
-      // Procura oponente sem overlap de jogador
-      let jOp = -1
-      for (let j = i + 1; j < paresPendentes.length; j++) {
-        const [b1, b2] = paresPendentes[j]
-        if (b1 === a1 || b1 === a2 || b2 === a1 || b2 === a2) continue
-        if (usados.has(b1) || usados.has(b2)) continue
-        jOp = j
-        break
-      }
-      if (jOp === -1) { i++; continue }
-
-      const [b1, b2] = paresPendentes[jOp]
-      const d1 = ensureDupla(a1, a2)
-      const d2 = ensureDupla(b1, b2)
-      jogos.push({
-        id: nanoid(),
-        torneioId,
-        fase: grupoNome,
-        rodada,
-        posicaoChave: posicao++,
-        dupla1Id: d1.id,
-        dupla2Id: d2.id,
-        status: 'aguardando',
-      })
-      usados.add(a1); usados.add(a2)
-      usados.add(b1); usados.add(b2)
-      paresPendentes.splice(jOp, 1)
-      paresPendentes.splice(i, 1)
-      jogoNaRodada = true
-      // não incrementa i — o item foi removido
-    }
-
-    if (!jogoNaRodada) {
-      // Não conseguiu criar jogos com pares restantes.
-      // Pareia os que sobraram permitindo repetição de parceria (pares com jogador comum).
-      // Para cada par, procura QUALQUER oponente sem overlap de jogador.
-      while (paresPendentes.length >= 2) {
-        const [a1, a2] = paresPendentes[0]
-        let jOp = -1
-        for (let j = 1; j < paresPendentes.length; j++) {
-          const [b1, b2] = paresPendentes[j]
-          if (b1 !== a1 && b1 !== a2 && b2 !== a1 && b2 !== a2) { jOp = j; break }
-        }
-        if (jOp === -1) break // pares restantes todos compartilham um jogador
-        const [b1, b2] = paresPendentes[jOp]
-        const d1 = ensureDupla(a1, a2)
-        const d2 = ensureDupla(b1, b2)
-        jogos.push({
-          id: nanoid(),
-          torneioId,
-          fase: grupoNome,
-          rodada: rodada + 1,
-          posicaoChave: posicao++,
-          dupla1Id: d1.id,
-          dupla2Id: d2.id,
-          status: 'aguardando',
-        })
-        paresPendentes.splice(jOp, 1)
-        paresPendentes.splice(0, 1)
-      }
-      break // sai do loop principal
-    }
-
+  function novaRodada() {
+    usadosNaRodada.clear()
     rodada++
+    jogosNaRodada = 0
+  }
+
+  for (const [a1, a2] of todosPares) {
+    if (cobertos.has(key(a1, a2))) continue
+
+    // Se a rodada atual bateu o limite ou os jogadores já estão usados, começa nova rodada
+    if (jogosNaRodada >= maxJogosPorRodada || usadosNaRodada.has(a1) || usadosNaRodada.has(a2)) {
+      novaRodada()
+    }
+
+    // 1ª preferência: oponente cujos jogadores NÃO estão na rodada + ainda não coberto
+    let opponent: [string, string] | null = null
+    for (const cand of todosPares) {
+      if (key(cand[0], cand[1]) === key(a1, a2)) continue
+      if (cand[0] === a1 || cand[0] === a2 || cand[1] === a1 || cand[1] === a2) continue
+      if (usadosNaRodada.has(cand[0]) || usadosNaRodada.has(cand[1])) continue
+      if (cobertos.has(key(cand[0], cand[1]))) continue
+      opponent = cand; break
+    }
+    // 2ª preferência: mesma condição, mas aceita partnership já coberta
+    if (!opponent) {
+      for (const cand of todosPares) {
+        if (key(cand[0], cand[1]) === key(a1, a2)) continue
+        if (cand[0] === a1 || cand[0] === a2 || cand[1] === a1 || cand[1] === a2) continue
+        if (usadosNaRodada.has(cand[0]) || usadosNaRodada.has(cand[1])) continue
+        opponent = cand; break
+      }
+    }
+    // 3ª preferência: rodada nova (jogador está livre), aceita qualquer oponente sem overlap
+    if (!opponent) {
+      novaRodada()
+      for (const cand of todosPares) {
+        if (key(cand[0], cand[1]) === key(a1, a2)) continue
+        if (cand[0] === a1 || cand[0] === a2 || cand[1] === a1 || cand[1] === a2) continue
+        opponent = cand; break
+      }
+    }
+
+    if (!opponent) continue // sem oponente possível (n muito pequeno)
+
+    const [b1, b2] = opponent
+    const d1 = ensureDupla(a1, a2)
+    const d2 = ensureDupla(b1, b2)
+    jogos.push({
+      id: nanoid(),
+      torneioId,
+      fase: grupoNome,
+      rodada,
+      posicaoChave: posicao++,
+      dupla1Id: d1.id,
+      dupla2Id: d2.id,
+      status: 'aguardando',
+    })
+    usadosNaRodada.add(a1); usadosNaRodada.add(a2)
+    usadosNaRodada.add(b1); usadosNaRodada.add(b2)
+    jogosNaRodada++
+    cobertos.add(key(a1, a2))
+    cobertos.add(key(b1, b2))
   }
 
   return { duplas, jogos }
