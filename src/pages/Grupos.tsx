@@ -1,12 +1,19 @@
+import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
-import { Grid3X3, Crown } from 'lucide-react'
+import { Grid3X3, Crown, Edit2 } from 'lucide-react'
+import Modal from '../components/ui/Modal'
+import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
+import { showToast } from '../components/ui/Toast'
 
 export default function Grupos() {
   const { id } = useParams<{ id: string }>()
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
+  const editarDupla = useTorneioStore(s => s.editarDupla)
+  const [editandoGrupo, setEditandoGrupo] = useState<string | null>(null)
+  const [editandoTudo, setEditandoTudo] = useState(false)
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
@@ -25,10 +32,18 @@ export default function Grupos() {
 
   return (
     <div className="space-y-6 page-enter">
-      <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
-        {isReizinho && <Crown className="text-yellow-300" size={28} />}
-        {isReizinho ? 'FASE REIZINHO' : 'FASE DE GRUPOS'}
-      </h1>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
+          {isReizinho && <Crown className="text-yellow-300" size={28} />}
+          {isReizinho ? 'FASE REIZINHO' : 'FASE DE GRUPOS'}
+        </h1>
+        <button
+          onClick={() => setEditandoTudo(true)}
+          className="btn-secondary flex items-center gap-2 text-sm"
+        >
+          <Edit2 size={16} /> Editar duplas
+        </button>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {torneio.grupos.map(grupo => {
@@ -36,7 +51,16 @@ export default function Grupos() {
 
           return (
             <div key={grupo.id} className="card p-4 space-y-4">
-              <h3 className="font-display text-2xl text-yellow-300 tracking-wide">{grupo.nome}</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-2xl text-yellow-300 tracking-wide">{grupo.nome}</h3>
+                <button
+                  onClick={() => setEditandoGrupo(grupo.nome)}
+                  className="btn-ghost p-1.5 text-xs flex items-center gap-1 border border-teal-800 hover:border-yellow-400/40 rounded-lg"
+                  title="Editar duplas deste grupo"
+                >
+                  <Edit2 size={12} /> Editar
+                </button>
+              </div>
 
               {/* Classificação */}
               {isReizinho ? (
@@ -53,12 +77,10 @@ export default function Grupos() {
                   const d2 = torneio.duplas.find(d => d.id === j.dupla2Id)
                   const nomeDupla = (d: any) => {
                     if (!d) return '?'
-                    if (isReizinho) {
-                      const j1 = torneio.jogadores.find(x => x.id === d.jogador1Id)
-                      const j2 = torneio.jogadores.find(x => x.id === d.jogador2Id)
-                      return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
-                    }
-                    return d.nome || 'Dupla'
+                    if (d.nome) return d.nome
+                    const j1 = torneio.jogadores.find(x => x.id === d.jogador1Id)
+                    const j2 = torneio.jogadores.find(x => x.id === d.jogador2Id)
+                    return `${j1?.apelido || j1?.nome || '?'} / ${j2?.apelido || j2?.nome || '?'}`
                   }
                   const isOk = j.status === 'finalizado' || j.status === 'wo'
                   return (
@@ -76,6 +98,43 @@ export default function Grupos() {
           )
         })}
       </div>
+
+      {editandoGrupo && (
+        <Modal title={`Editar duplas — ${editandoGrupo}`} onClose={() => setEditandoGrupo(null)} size="lg">
+          <EditarDuplasModal
+            duplas={torneio.duplas}
+            jogadores={torneio.jogadores}
+            grupos={torneio.grupos}
+            soDoGrupo={editandoGrupo}
+            onSave={(updates) => {
+              updates.forEach(u => editarDupla(id!, u.id, {
+                nome: u.nome, jogador1Id: u.jogador1Id, jogador2Id: u.jogador2Id,
+              }))
+              setEditandoGrupo(null)
+              showToast('Duplas atualizadas!', 'success')
+            }}
+            onClose={() => setEditandoGrupo(null)}
+          />
+        </Modal>
+      )}
+
+      {editandoTudo && (
+        <Modal title="Editar duplas" onClose={() => setEditandoTudo(false)} size="lg">
+          <EditarDuplasModal
+            duplas={torneio.duplas}
+            jogadores={torneio.jogadores}
+            grupos={torneio.grupos}
+            onSave={(updates) => {
+              updates.forEach(u => editarDupla(id!, u.id, {
+                nome: u.nome, jogador1Id: u.jogador1Id, jogador2Id: u.jogador2Id,
+              }))
+              setEditandoTudo(false)
+              showToast('Duplas atualizadas!', 'success')
+            }}
+            onClose={() => setEditandoTudo(false)}
+          />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -120,7 +179,6 @@ function RankingDuplas({ torneio, grupo, classificados }: any) {
 }
 
 function RankingReizinho({ torneio, grupo, classificados }: any) {
-  // Descobre jogadores do grupo a partir das duplas
   const jogadoresIds = new Set<string>()
   torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id)).forEach((d: any) => {
     jogadoresIds.add(d.jogador1Id)
