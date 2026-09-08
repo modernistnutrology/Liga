@@ -60,7 +60,10 @@ export default function Grupos() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {torneio.grupos.map(grupo => {
-          const jogosGrupo = torneio.jogos.filter(j => j.fase === grupo.nome)
+          // Dedup jogos por ID
+          const jogosMap = new Map()
+          torneio.jogos.filter(j => j.fase === grupo.nome).forEach(j => { if (!jogosMap.has(j.id)) jogosMap.set(j.id, j) })
+          const jogosGrupo = Array.from(jogosMap.values())
 
           return (
             <div key={grupo.id} className="card p-4 space-y-4">
@@ -183,7 +186,11 @@ export default function Grupos() {
 }
 
 function RankingDuplas({ torneio, grupo, classificados }: any) {
-  const duplas = torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id))
+  // Dedup duplas
+  const gruposDuplasIds = new Set<string>(grupo.duplas)
+  const duplas = Array.from(
+    new Map(torneio.duplas.filter((d: any) => gruposDuplasIds.has(d.id)).map((d: any) => [d.id, d])).values()
+  ) as any[]
   const linhas = calcularClassificacao(duplas, torneio.jogos, grupo.nome)
   return (
     <div className="overflow-x-auto">
@@ -222,12 +229,23 @@ function RankingDuplas({ torneio, grupo, classificados }: any) {
 }
 
 function RankingReizinho({ torneio, grupo, classificados }: any) {
+  // Dedup duplas do grupo (proteção contra IDs repetidos)
+  const gruposDuplasIds = new Set<string>(grupo.duplas)
+  const duplasDoGrupo = Array.from(
+    new Map(torneio.duplas.filter((d: any) => gruposDuplasIds.has(d.id)).map((d: any) => [d.id, d])).values()
+  ) as any[]
+
   const jogadoresIds = new Set<string>()
-  torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id)).forEach((d: any) => {
+  duplasDoGrupo.forEach((d: any) => {
     jogadoresIds.add(d.jogador1Id)
     jogadoresIds.add(d.jogador2Id)
   })
-  const jogadores = torneio.jogadores.filter((j: any) => jogadoresIds.has(j.id))
+
+  // Dedup jogadores por ID
+  const jogadoresMap = new Map<string, any>()
+  torneio.jogadores.forEach((j: any) => { if (jogadoresIds.has(j.id) && !jogadoresMap.has(j.id)) jogadoresMap.set(j.id, j) })
+  const jogadores = Array.from(jogadoresMap.values())
+
   const ranking = calcularRankingReizinho(jogadores, torneio.duplas, torneio.jogos, grupo.nome)
 
   return (

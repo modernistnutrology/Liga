@@ -65,11 +65,20 @@ function ClassificacaoReizinho({ torneio }: any) {
   })
 
   // Ranking individual GERAL (todos os grupos combinados)
-  const rankingGeral: RankingJogador[] = []
+  // Concatena e dedupa por jogador.id (jogador não pode aparecer 2x mesmo se estivesse em 2 grupos)
+  const rankingMap = new Map<string, RankingJogador>()
   rankingsPorGrupo.forEach(({ ranking }: any) => {
-    rankingGeral.push(...ranking)
+    ranking.forEach((r: RankingJogador) => {
+      const existente = rankingMap.get(r.jogador.id)
+      if (!existente) {
+        rankingMap.set(r.jogador.id, r)
+      } else {
+        // Se por acaso existir duplicado, ficamos com o de mais pontos
+        if (r.pontos > existente.pontos) rankingMap.set(r.jogador.id, r)
+      }
+    })
   })
-  rankingGeral.sort((a, b) => {
+  const rankingGeral: RankingJogador[] = Array.from(rankingMap.values()).sort((a, b) => {
     if (b.pontos !== a.pontos) return b.pontos - a.pontos
     if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias
     return b.saldo - a.saldo
