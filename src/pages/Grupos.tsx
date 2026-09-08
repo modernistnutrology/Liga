@@ -3,9 +3,10 @@ import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
-import { Grid3X3, Crown, Edit2 } from 'lucide-react'
+import { Grid3X3, Crown, Edit2, ArrowLeftRight } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
+import TrocarJogadoresGrupoModal from '../components/duplas/TrocarJogadoresGrupoModal'
 import { showToast } from '../components/ui/Toast'
 
 export default function Grupos() {
@@ -13,8 +14,10 @@ export default function Grupos() {
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
   const editarDupla = useTorneioStore(s => s.editarDupla)
   const editarJogador = useTorneioStore(s => s.editarJogador)
+  const atualizarTorneio = useTorneioStore(s => s.atualizarTorneio)
   const [editandoGrupo, setEditandoGrupo] = useState<string | null>(null)
   const [editandoTudo, setEditandoTudo] = useState(false)
+  const [trocandoJogadores, setTrocandoJogadores] = useState(false)
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
@@ -38,12 +41,21 @@ export default function Grupos() {
           {isReizinho && <Crown className="text-yellow-300" size={28} />}
           {isReizinho ? 'FASE REIZINHO' : 'FASE DE GRUPOS'}
         </h1>
-        <button
-          onClick={() => setEditandoTudo(true)}
-          className="btn-secondary flex items-center gap-2 text-sm"
-        >
-          <Edit2 size={16} /> Editar duplas
-        </button>
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setTrocandoJogadores(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+            title="Trocar jogadores entre grupos"
+          >
+            <ArrowLeftRight size={16} /> Trocar entre grupos
+          </button>
+          <button
+            onClick={() => setEditandoTudo(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Edit2 size={16} /> Editar duplas
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -135,6 +147,34 @@ export default function Grupos() {
               showToast('Alterações salvas!', 'success')
             }}
             onClose={() => setEditandoTudo(false)}
+          />
+        </Modal>
+      )}
+
+      {trocandoJogadores && (
+        <Modal title="Trocar jogadores entre grupos" onClose={() => setTrocandoJogadores(false)} size="lg">
+          <TrocarJogadoresGrupoModal
+            duplas={torneio.duplas}
+            jogadores={torneio.jogadores}
+            grupos={torneio.grupos}
+            onSave={({ jogadorAId, jogadorBId }) => {
+              // Substitui um ID pelo outro em todas as duplas (swap total)
+              const novasDuplas = torneio.duplas.map(d => {
+                const novo1 =
+                  d.jogador1Id === jogadorAId ? jogadorBId :
+                  d.jogador1Id === jogadorBId ? jogadorAId : d.jogador1Id
+                const novo2 =
+                  d.jogador2Id === jogadorAId ? jogadorBId :
+                  d.jogador2Id === jogadorBId ? jogadorAId : d.jogador2Id
+                return novo1 === d.jogador1Id && novo2 === d.jogador2Id
+                  ? d
+                  : { ...d, jogador1Id: novo1, jogador2Id: novo2 }
+              })
+              atualizarTorneio(id!, { duplas: novasDuplas })
+              setTrocandoJogadores(false)
+              showToast('Jogadores trocados entre grupos!', 'success')
+            }}
+            onClose={() => setTrocandoJogadores(false)}
           />
         </Modal>
       )}
