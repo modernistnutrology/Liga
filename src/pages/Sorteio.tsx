@@ -117,48 +117,46 @@ export default function Sorteio() {
   }
 
   // === REIZINHO ===
+  // Aplica a distribuição de jogadores em grupos e gera todas as duplas/jogos do reizinho
+  function aplicarDistribuicaoReizinho(idsPorGrupo: string[][]) {
+    const novosGrupos = idsPorGrupo.map((_playerIds, i) => ({
+      id: nanoid(),
+      nome: `Grupo ${String.fromCharCode(65 + i)}`,
+      duplas: [] as string[],
+    }))
+    let todasDuplas: Dupla[] = []
+    let todosJogos: any[] = []
+    idsPorGrupo.forEach((playerIds, i) => {
+      const { duplas, jogos: jgs } = gerarJogosReizinhoGrupo(id!, playerIds, novosGrupos[i].nome)
+      novosGrupos[i].duplas = duplas.map(d => d.id)
+      todasDuplas = [...todasDuplas, ...duplas]
+      todosJogos = [...todosJogos, ...jgs]
+    })
+    store.atualizarTorneio(id!, {
+      duplas: todasDuplas,
+      grupos: novosGrupos,
+      jogos: todosJogos,
+      status: 'em_andamento',
+    })
+    setConfirmado(true)
+    showToast('Reizinho gerado! Rodadas prontas.')
+  }
+
   function handleSortearReizinho() {
     const numGrupos = torneio!.totalGrupos || 2
     const jogadoresPorGrupo = torneio!.jogadoresPorGrupo || 4
     const total = torneio!.jogadores.length
     const min = numGrupos * jogadoresPorGrupo
-
     if (total < min) {
       showToast(`Precisa de ${min} jogadores (${jogadoresPorGrupo}×${numGrupos})`, 'error')
       return
     }
-
     const allNames = torneio!.jogadores.map(j => j.apelido || j.nome)
     runSlotAnimation(allNames, () => {
       const shuffled = shuffleArray(torneio!.jogadores)
       const usados = shuffled.slice(0, min)
       const idsPorGrupo = distribuirJogadoresEmGrupos(usados.map(j => j.id), numGrupos)
-
-      // Cria os grupos + jogos + duplas temporárias
-      const novosGrupos = idsPorGrupo.map((playerIds, i) => ({
-        id: nanoid(),
-        nome: `Grupo ${String.fromCharCode(65 + i)}`,
-        duplas: [] as string[], // preenchido abaixo
-      }))
-      let todasDuplas: Dupla[] = []
-      let todosJogos: any[] = []
-      idsPorGrupo.forEach((playerIds, i) => {
-        const { duplas, jogos: jgs } = gerarJogosReizinhoGrupo(id!, playerIds, novosGrupos[i].nome)
-        novosGrupos[i].duplas = duplas.map(d => d.id)
-        todasDuplas = [...todasDuplas, ...duplas]
-        todosJogos = [...todosJogos, ...jgs]
-      })
-
-      // IMPORTANTE: substitui totalmente duplas/jogos/grupos.
-      // Isso descarta duplas antigas de sorteios anteriores (evita mistura entre grupos).
-      store.atualizarTorneio(id!, {
-        duplas: todasDuplas,
-        grupos: novosGrupos,
-        jogos: todosJogos,
-        status: 'em_andamento',
-      })
-      setConfirmado(true)
-      showToast('Reizinho gerado! Rodadas prontas.')
+      aplicarDistribuicaoReizinho(idsPorGrupo)
     })
   }
 
@@ -180,7 +178,7 @@ export default function Sorteio() {
     const jaGerado = torneio.grupos.length > 0
 
     return (
-      <div className="space-y-6 page-enter max-w-2xl">
+      <div className="space-y-6 page-enter max-w-3xl">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
           <Crown className="text-yellow-300" size={32} />
           SORTEIO REIZINHO
@@ -221,26 +219,16 @@ export default function Sorteio() {
           </div>
         )}
 
-        <button
-          onClick={handleSortearReizinho}
+        <ReizinhoAutoOrManual
+          torneio={torneio}
+          numGrupos={numGrupos}
+          jogadoresPorGrupo={jogadoresPorGrupo}
           disabled={animating || torneio.jogadores.length < minJog}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Shuffle size={18} className={animating ? 'animate-spin' : ''} />
-          {jaGerado ? 'Sortear novamente' : 'Sortear grupos e rodadas'}
-        </button>
-
-        {animating && (
-          <div className="card p-6 text-center">
-            <div className="flex flex-wrap gap-2 justify-center">
-              {displayNames.map((n, i) => (
-                <span key={i} className="slot-spin bg-yellow-400/20 text-yellow-300 px-3 py-1.5 rounded-lg font-mono font-bold text-sm border border-yellow-400/30 min-w-[80px] inline-block text-center">
-                  {n}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+          animating={animating}
+          displayNames={displayNames}
+          onAuto={handleSortearReizinho}
+          onManual={aplicarDistribuicaoReizinho}
+        />
 
         {confirmado && (
           <button onClick={() => navigate(`/torneio/${id}/chaveamento`)} className="btn-primary flex items-center gap-2 text-sm">
@@ -412,6 +400,162 @@ export default function Sorteio() {
               </div>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
+// Componente: Sorteio Reizinho — Automático ou Manual
+// ============================================================================
+
+interface ReizinhoAutoOrManualProps {
+  torneio: any
+  numGrupos: number
+  jogadoresPorGrupo: number
+  disabled: boolean
+  animating: boolean
+  displayNames: string[]
+  onAuto: () => void
+  onManual: (idsPorGrupo: string[][]) => void
+}
+
+function ReizinhoAutoOrManual({
+  torneio, numGrupos, jogadoresPorGrupo, disabled, animating, displayNames, onAuto, onManual,
+}: ReizinhoAutoOrManualProps) {
+  const [modo, setModo] = useState<'auto' | 'manual'>('auto')
+  // Estado do manual: para cada jogador, em qual grupo está (índice 0..numGrupos-1) ou -1 (fora)
+  const minTotal = numGrupos * jogadoresPorGrupo
+  const [atribuicao, setAtribuicao] = useState<Record<string, number>>(() => {
+    // Se já tem grupos, preenche a partir deles; senão distribui em sequência
+    const map: Record<string, number> = {}
+    if (torneio.grupos.length > 0) {
+      torneio.grupos.forEach((g: any, gi: number) => {
+        const idsNoGrupo = new Set<string>()
+        torneio.duplas.filter((d: any) => g.duplas.includes(d.id)).forEach((d: any) => {
+          idsNoGrupo.add(d.jogador1Id); idsNoGrupo.add(d.jogador2Id)
+        })
+        idsNoGrupo.forEach(id => { map[id] = gi })
+      })
+      torneio.jogadores.forEach((j: any) => { if (map[j.id] == null) map[j.id] = -1 })
+    } else {
+      // Distribui os primeiros minTotal em rodízio pelos grupos
+      torneio.jogadores.forEach((j: any, i: number) => {
+        map[j.id] = i < minTotal ? i % numGrupos : -1
+      })
+    }
+    return map
+  })
+
+  function contagemPorGrupo() {
+    const cnt = Array(numGrupos).fill(0)
+    Object.values(atribuicao).forEach(g => { if (g >= 0 && g < numGrupos) cnt[g]++ })
+    return cnt
+  }
+
+  function handleAplicarManual() {
+    const idsPorGrupo: string[][] = Array.from({ length: numGrupos }, () => [])
+    torneio.jogadores.forEach((j: any) => {
+      const g = atribuicao[j.id]
+      if (g >= 0 && g < numGrupos) idsPorGrupo[g].push(j.id)
+    })
+    // Valida tamanhos
+    const grupoInvalido = idsPorGrupo.findIndex(ids => ids.length !== jogadoresPorGrupo)
+    if (grupoInvalido !== -1) {
+      showToast(`Grupo ${String.fromCharCode(65 + grupoInvalido)} tem ${idsPorGrupo[grupoInvalido].length} jogadores, precisa de ${jogadoresPorGrupo}`, 'error')
+      return
+    }
+    onManual(idsPorGrupo)
+  }
+
+  const cnt = contagemPorGrupo()
+
+  return (
+    <div className="space-y-4">
+      {/* Toggle */}
+      <div className="flex gap-1 bg-teal-900 p-1 rounded-xl w-fit">
+        {(['auto', 'manual'] as const).map(m => (
+          <button key={m} onClick={() => setModo(m)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize
+              ${modo === m ? 'bg-yellow-400 text-teal-950' : 'text-teal-300 hover:text-teal-50'}`}>
+            {m === 'auto' ? 'Automático' : 'Manual'}
+          </button>
+        ))}
+      </div>
+
+      {modo === 'auto' && (
+        <div>
+          <button
+            onClick={onAuto}
+            disabled={disabled}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Shuffle size={18} className={animating ? 'animate-spin' : ''} />
+            Sortear grupos aleatoriamente
+          </button>
+          {animating && (
+            <div className="card p-6 text-center mt-4">
+              <div className="flex flex-wrap gap-2 justify-center">
+                {displayNames.map((n, i) => (
+                  <span key={i} className="slot-spin bg-yellow-400/20 text-yellow-300 px-3 py-1.5 rounded-lg font-mono font-bold text-sm border border-yellow-400/30 min-w-[80px] inline-block text-center">
+                    {n}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {modo === 'manual' && (
+        <div className="space-y-3">
+          <p className="text-sm text-teal-300">
+            Escolha o grupo de cada jogador. Cada grupo precisa ter <strong className="text-yellow-300">{jogadoresPorGrupo}</strong> jogadores.
+          </p>
+
+          {/* Contagem por grupo */}
+          <div className="flex gap-2 flex-wrap">
+            {Array.from({ length: numGrupos }, (_, i) => {
+              const grupoNome = `Grupo ${String.fromCharCode(65 + i)}`
+              const ok = cnt[i] === jogadoresPorGrupo
+              return (
+                <span key={i} className={`text-xs px-2 py-1 rounded-lg border ${ok ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-teal-700 bg-teal-800/30 text-teal-300'}`}>
+                  {grupoNome}: {cnt[i]}/{jogadoresPorGrupo}
+                </span>
+              )
+            })}
+          </div>
+
+          {/* Lista de jogadores */}
+          <div className="space-y-1.5 max-h-[45vh] overflow-y-auto pr-1">
+            {torneio.jogadores.map((j: any) => (
+              <div key={j.id} className="flex items-center gap-3 p-2 rounded-lg border border-teal-800 bg-teal-900/30">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-teal-100 truncate">{j.nome}</div>
+                  {j.apelido && <div className="text-xs text-teal-400 truncate">"{j.apelido}"</div>}
+                </div>
+                <select
+                  className="select text-sm w-auto"
+                  value={atribuicao[j.id] ?? -1}
+                  onChange={e => setAtribuicao(a => ({ ...a, [j.id]: Number(e.target.value) }))}
+                >
+                  <option value={-1}>— Fora —</option>
+                  {Array.from({ length: numGrupos }, (_, i) => (
+                    <option key={i} value={i}>Grupo {String.fromCharCode(65 + i)}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={handleAplicarManual}
+            disabled={cnt.some(c => c !== jogadoresPorGrupo)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Check size={16} /> Confirmar grupos manuais
+          </button>
         </div>
       )}
     </div>
