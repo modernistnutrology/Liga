@@ -25,34 +25,43 @@ function maybeGerarMataMataReizinho(
 
   // Reizinho: pega top-N JOGADORES de cada grupo
   const classificadosPorGrupo = torneio.classificadosPorGrupo ?? 2
-  const classificadosOrdenados: { jogadorId: string; grupoNome: string; posicao: number; pontos: number }[] = []
 
+  // Organiza por POSIÇÃO: [ [1ºA, 1ºB, 1ºC, ...], [2ºA, 2ºB, ...], [3ºA, ...] ]
+  const porPosicao: string[][] = []
+  for (let pos = 0; pos < classificadosPorGrupo; pos++) {
+    porPosicao[pos] = []
+  }
   for (const grupo of torneio.grupos) {
     const jogadoresDoGrupo = torneio.jogadores.filter(j =>
       duplas.some(d => grupo.duplas.includes(d.id) && (d.jogador1Id === j.id || d.jogador2Id === j.id))
     )
     const ranking = calcularRankingReizinho(jogadoresDoGrupo, duplas, jogos, grupo.nome)
-    ranking.slice(0, classificadosPorGrupo).forEach((r, pos) => {
-      classificadosOrdenados.push({ jogadorId: r.jogador.id, grupoNome: grupo.nome, posicao: pos, pontos: r.pontos })
-    })
+    for (let pos = 0; pos < classificadosPorGrupo; pos++) {
+      if (ranking[pos]) porPosicao[pos].push(ranking[pos].jogador.id)
+    }
   }
 
-  // Ordena por pontos (mais forte primeiro)
-  classificadosOrdenados.sort((a, b) => b.pontos - a.pontos)
+  // Achata em uma única fila mantendo a ordem: todos os 1º primeiro (A, B, C...),
+  // depois todos os 2º (A, B, C...), depois todos os 3º, etc.
+  // Se algum grupo/posição ficar ímpar, o restante emenda com o próximo (ex: 7º 1º + 1º 2º).
+  const fila: string[] = []
+  for (const posLista of porPosicao) {
+    fila.push(...posLista)
+  }
 
-  if (classificadosOrdenados.length < 4) return { jogos, duplas }
+  if (fila.length < 4) return { jogos, duplas }
 
-  // Forma duplas: melhor + 2º melhor, 3º + 4º, etc.
+  // Forma duplas emparelhando 2 a 2 na ordem: (0,1), (2,3), (4,5), ...
   const novasDuplas: Dupla[] = []
-  for (let i = 0; i < classificadosOrdenados.length - 1; i += 2) {
-    const p1 = classificadosOrdenados[i]
-    const p2 = classificadosOrdenados[i + 1]
-    const j1 = torneio.jogadores.find(x => x.id === p1.jogadorId)
-    const j2 = torneio.jogadores.find(x => x.id === p2.jogadorId)
+  for (let i = 0; i < fila.length - 1; i += 2) {
+    const j1id = fila[i]
+    const j2id = fila[i + 1]
+    const j1 = torneio.jogadores.find(x => x.id === j1id)
+    const j2 = torneio.jogadores.find(x => x.id === j2id)
     novasDuplas.push({
       id: nanoid(),
-      jogador1Id: p1.jogadorId,
-      jogador2Id: p2.jogadorId,
+      jogador1Id: j1id,
+      jogador2Id: j2id,
       nome: `${j1?.apelido || j1?.nome} & ${j2?.apelido || j2?.nome}`,
       seed: novasDuplas.length + 1,
       criadoEm: new Date().toISOString(),
