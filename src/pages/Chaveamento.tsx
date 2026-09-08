@@ -263,14 +263,19 @@ export default function Chaveamento() {
       )}
 
       {editandoDuplas && (
-        <Modal title="Editar nomes das duplas" onClose={() => setEditandoDuplas(false)} size="lg">
+        <Modal title="Editar duplas" onClose={() => setEditandoDuplas(false)} size="lg">
           <EditarDuplas
             duplas={torneio.duplas}
             jogadores={torneio.jogadores}
+            grupos={torneio.grupos}
             onSave={(updates) => {
-              updates.forEach(u => editarDupla(id!, u.id, { nome: u.nome }))
+              updates.forEach(u => editarDupla(id!, u.id, {
+                nome: u.nome,
+                jogador1Id: u.jogador1Id,
+                jogador2Id: u.jogador2Id,
+              }))
               setEditandoDuplas(false)
-              showToast('Nomes atualizados!', 'success')
+              showToast('Duplas atualizadas!', 'success')
             }}
             onClose={() => setEditandoDuplas(false)}
           />
@@ -329,58 +334,122 @@ function DuplaRow({ nome, placar, isVencedor, isFinished, isBye }: any) {
 interface EditarDuplasProps {
   duplas: Dupla[]
   jogadores: { id: string; nome: string; apelido?: string }[]
-  onSave: (updates: { id: string; nome: string }[]) => void
+  grupos?: { id: string; nome: string; duplas: string[] }[]
+  onSave: (updates: { id: string; nome: string; jogador1Id: string; jogador2Id: string }[]) => void
   onClose: () => void
 }
 
-function EditarDuplas({ duplas, jogadores, onSave, onClose }: EditarDuplasProps) {
-  const [nomes, setNomes] = useState<Record<string, string>>(() => {
-    const map: Record<string, string> = {}
-    duplas.forEach(d => { map[d.id] = d.nome || '' })
+interface DuplaEdit {
+  nome: string
+  jogador1Id: string
+  jogador2Id: string
+}
+
+function EditarDuplas({ duplas, jogadores, grupos, onSave, onClose }: EditarDuplasProps) {
+  const [edits, setEdits] = useState<Record<string, DuplaEdit>>(() => {
+    const map: Record<string, DuplaEdit> = {}
+    duplas.forEach(d => {
+      map[d.id] = { nome: d.nome || '', jogador1Id: d.jogador1Id, jogador2Id: d.jogador2Id }
+    })
     return map
   })
 
-  function getJogadorNome(jId: string) {
-    const j = jogadores.find(x => x.id === jId)
-    return j ? (j.apelido || j.nome) : '?'
+  function updateEdit(duplaId: string, patch: Partial<DuplaEdit>) {
+    setEdits(prev => ({ ...prev, [duplaId]: { ...prev[duplaId], ...patch } }))
   }
 
   function handleSave() {
     const updates = duplas
-      .filter(d => nomes[d.id] !== d.nome)
-      .map(d => ({ id: d.id, nome: nomes[d.id].trim() }))
+      .filter(d => {
+        const e = edits[d.id]
+        return e.nome !== (d.nome || '') || e.jogador1Id !== d.jogador1Id || e.jogador2Id !== d.jogador2Id
+      })
+      .map(d => ({
+        id: d.id,
+        nome: edits[d.id].nome.trim(),
+        jogador1Id: edits[d.id].jogador1Id,
+        jogador2Id: edits[d.id].jogador2Id,
+      }))
     onSave(updates)
+  }
+
+  // Agrupa duplas por grupo (se houver) ou coloca todas em uma seção
+  const duplasAgrupadas: { titulo: string | null; itens: Dupla[] }[] = []
+  if (grupos && grupos.length > 0) {
+    grupos.forEach(g => {
+      const itens = duplas.filter(d => g.duplas.includes(d.id))
+      if (itens.length > 0) duplasAgrupadas.push({ titulo: g.nome, itens })
+    })
+    const foraDeGrupo = duplas.filter(d => !grupos.some(g => g.duplas.includes(d.id)))
+    if (foraDeGrupo.length > 0) duplasAgrupadas.push({ titulo: 'Mata-mata', itens: foraDeGrupo })
+  } else {
+    duplasAgrupadas.push({ titulo: null, itens: duplas })
   }
 
   return (
     <div className="space-y-3">
       <p className="text-sm text-teal-300">
-        Edite os nomes das duplas. As mudanças aparecem em todos os jogos automaticamente.
+        Troque os jogadores de cada dupla ou renomeie-as. As mudanças aparecem em todos os jogos.
       </p>
 
-      <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-        {duplas.map((d, i) => (
-          <div key={d.id} className="flex items-center gap-3">
-            <span className="w-7 h-7 rounded-full bg-teal-800 flex items-center justify-center text-xs font-bold text-yellow-300 flex-shrink-0">
-              {i + 1}
-            </span>
-            <div className="flex-1 min-w-0">
-              <input
-                className="input text-sm"
-                value={nomes[d.id] ?? ''}
-                onChange={e => setNomes(n => ({ ...n, [d.id]: e.target.value }))}
-                placeholder="Nome da dupla"
-              />
-              <div className="text-xs text-teal-400 mt-1 truncate">
-                {getJogadorNome(d.jogador1Id)} & {getJogadorNome(d.jogador2Id)}
-              </div>
-            </div>
+      <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+        {duplasAgrupadas.map((secao, si) => (
+          <div key={si} className="space-y-2">
+            {secao.titulo && (
+              <h4 className="text-xs font-semibold text-yellow-300 uppercase tracking-wider">{secao.titulo}</h4>
+            )}
+            {secao.itens.map((d, i) => {
+              const e = edits[d.id]
+              const mesmoJogador = e.jogador1Id === e.jogador2Id
+              return (
+                <div key={d.id} className="border border-teal-800 rounded-lg p-3 space-y-2 bg-teal-900/30">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-teal-800 flex items-center justify-center text-xs font-bold text-yellow-300 flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <input
+                      className="input text-sm flex-1"
+                      value={e.nome}
+                      onChange={ev => updateEdit(d.id, { nome: ev.target.value })}
+                      placeholder="Nome da dupla (opcional)"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      className="select text-sm"
+                      value={e.jogador1Id}
+                      onChange={ev => updateEdit(d.id, { jogador1Id: ev.target.value })}
+                    >
+                      {jogadores.map(j => (
+                        <option key={j.id} value={j.id}>{j.apelido || j.nome}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="select text-sm"
+                      value={e.jogador2Id}
+                      onChange={ev => updateEdit(d.id, { jogador2Id: ev.target.value })}
+                    >
+                      {jogadores.map(j => (
+                        <option key={j.id} value={j.id}>{j.apelido || j.nome}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {mesmoJogador && (
+                    <div className="text-xs text-red-400">Os dois jogadores não podem ser iguais</div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         ))}
       </div>
 
       <div className="flex gap-2 pt-2 border-t border-teal-800">
-        <button onClick={handleSave} className="btn-primary text-sm flex-1">
+        <button
+          onClick={handleSave}
+          disabled={Object.values(edits).some(e => e.jogador1Id === e.jogador2Id)}
+          className="btn-primary text-sm flex-1"
+        >
           Salvar alterações
         </button>
         <button onClick={onClose} className="btn-secondary text-sm">
