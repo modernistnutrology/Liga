@@ -12,6 +12,7 @@ export default function Grupos() {
   const { id } = useParams<{ id: string }>()
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
   const editarDupla = useTorneioStore(s => s.editarDupla)
+  const editarJogador = useTorneioStore(s => s.editarJogador)
   const [editandoGrupo, setEditandoGrupo] = useState<string | null>(null)
   const [editandoTudo, setEditandoTudo] = useState(false)
 
@@ -106,12 +107,13 @@ export default function Grupos() {
             jogadores={torneio.jogadores}
             grupos={torneio.grupos}
             soDoGrupo={editandoGrupo}
-            onSave={(updates) => {
-              updates.forEach(u => editarDupla(id!, u.id, {
+            onSave={(duplaUpdates, jogadorUpdates) => {
+              jogadorUpdates.forEach(j => editarJogador(id!, j.id, { nome: j.nome, apelido: j.apelido }))
+              duplaUpdates.forEach(u => editarDupla(id!, u.id, {
                 nome: u.nome, jogador1Id: u.jogador1Id, jogador2Id: u.jogador2Id,
               }))
               setEditandoGrupo(null)
-              showToast('Duplas atualizadas!', 'success')
+              showToast('Alterações salvas!', 'success')
             }}
             onClose={() => setEditandoGrupo(null)}
           />
@@ -124,12 +126,13 @@ export default function Grupos() {
             duplas={torneio.duplas}
             jogadores={torneio.jogadores}
             grupos={torneio.grupos}
-            onSave={(updates) => {
-              updates.forEach(u => editarDupla(id!, u.id, {
+            onSave={(duplaUpdates, jogadorUpdates) => {
+              jogadorUpdates.forEach(j => editarJogador(id!, j.id, { nome: j.nome, apelido: j.apelido }))
+              duplaUpdates.forEach(u => editarDupla(id!, u.id, {
                 nome: u.nome, jogador1Id: u.jogador1Id, jogador2Id: u.jogador2Id,
               }))
               setEditandoTudo(false)
-              showToast('Duplas atualizadas!', 'success')
+              showToast('Alterações salvas!', 'success')
             }}
             onClose={() => setEditandoTudo(false)}
           />

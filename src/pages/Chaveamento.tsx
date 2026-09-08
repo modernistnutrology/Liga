@@ -16,6 +16,7 @@ export default function Chaveamento() {
   const torneio = useTorneioStore(s => s.torneios.find(t => t.id === id))
   const setJogos = useTorneioStore(s => s.setJogos)
   const editarDupla = useTorneioStore(s => s.editarDupla)
+  const editarJogador = useTorneioStore(s => s.editarJogador)
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
   const [exporting, setExporting] = useState(false)
   const [editandoDuplas, setEditandoDuplas] = useState(false)
@@ -269,14 +270,15 @@ export default function Chaveamento() {
             duplas={torneio.duplas}
             jogadores={torneio.jogadores}
             grupos={torneio.grupos}
-            onSave={(updates) => {
-              updates.forEach(u => editarDupla(id!, u.id, {
+            onSave={(duplaUpdates, jogadorUpdates) => {
+              jogadorUpdates.forEach(j => editarJogador(id!, j.id, { nome: j.nome, apelido: j.apelido }))
+              duplaUpdates.forEach(u => editarDupla(id!, u.id, {
                 nome: u.nome,
                 jogador1Id: u.jogador1Id,
                 jogador2Id: u.jogador2Id,
               }))
               setEditandoDuplas(false)
-              showToast('Duplas atualizadas!', 'success')
+              showToast('Alterações salvas!', 'success')
             }}
             onClose={() => setEditandoDuplas(false)}
           />
