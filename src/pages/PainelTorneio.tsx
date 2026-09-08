@@ -31,9 +31,15 @@ export default function PainelTorneio() {
     showToast('Torneio finalizado!')
   }
 
+  const temGrupos = torneio.grupos.length > 0 ||
+    torneio.formato === 'grupos_e_mata_mata' ||
+    torneio.formato === 'reizinho' ||
+    torneio.formato === 'pontos_corridos'
+
   const acoes = [
     { theme: sectionThemes.participantes, desc: `${torneio.jogadores.length} jogadores · ${torneio.duplas.length} duplas` },
     { theme: sectionThemes.sorteio,       desc: 'Sortear duplas e chaveamento' },
+    ...(temGrupos ? [{ theme: sectionThemes.grupos, desc: `${torneio.grupos.length} grupo(s) · rodízio e ranking` }] : []),
     { theme: sectionThemes.chaveamento,   desc: 'Bracket visual interativo' },
     { theme: sectionThemes.resultados,    desc: `${jogosFin}/${jogosTotal} jogos lançados` },
     { theme: sectionThemes.classificacao, desc: 'Tabela de pontos' },
