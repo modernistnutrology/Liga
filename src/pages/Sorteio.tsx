@@ -149,9 +149,10 @@ export default function Sorteio() {
         todosJogos = [...todosJogos, ...jgs]
       })
 
-      // Grava tudo de uma vez preservando os IDs originais
+      // IMPORTANTE: substitui totalmente duplas/jogos/grupos.
+      // Isso descarta duplas antigas de sorteios anteriores (evita mistura entre grupos).
       store.atualizarTorneio(id!, {
-        duplas: [...torneio!.duplas, ...todasDuplas],
+        duplas: todasDuplas,
         grupos: novosGrupos,
         jogos: todosJogos,
         status: 'em_andamento',

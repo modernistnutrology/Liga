@@ -5,11 +5,13 @@ import { nanoid } from './nanoid'
  * Reizinho — formato de rodízio (Beach Tennis / Padel).
  * Cada jogador do grupo joga com cada outro como parceiro exatamente uma vez.
  *
- * Gera todas as combinações de duplas + jogos onde parceiros nunca se enfrentam.
  * Para 4 jogadores (A,B,C,D): 3 rodadas
  *   Rod 1: AB vs CD
  *   Rod 2: AC vs BD
  *   Rod 3: AD vs BC
+ *
+ * Para N > 4: cria jogos válidos onde jogadores não se sobrepõem.
+ * Algumas duplas podem não jogar nenhum jogo (limitação para N ímpar / grande).
  */
 export function gerarJogosReizinhoGrupo(
   torneioId: string,
@@ -19,15 +21,11 @@ export function gerarJogosReizinhoGrupo(
   const n = playerIds.length
   const duplas: Dupla[] = []
   const jogos: Jogo[] = []
+  if (n < 4) return { duplas, jogos }
 
-  if (n < 4) {
-    // Menos de 4 não dá pra rodar reizinho
-    return { duplas, jogos }
-  }
-
-  // Gera todas as combinações de pares (duplas temporárias)
+  // Registro de duplas SÓ é feito quando o par vira um jogo (evita duplas órfãs)
   const duplasByKey = new Map<string, Dupla>()
-  function getOuCriarDupla(p1: string, p2: string): Dupla {
+  function ensureDupla(p1: string, p2: string): Dupla {
     const key = [p1, p2].sort().join('-')
     let d = duplasByKey.get(key)
     if (!d) {
@@ -44,51 +42,42 @@ export function gerarJogosReizinhoGrupo(
     return d
   }
 
-  // Gera rodadas com rotação: cada jogador partner com cada outro uma vez
-  // Algoritmo: para cada par (i,j), quando (i,j) joga, quem é o outro par? Precisa ser
-  // dois jogadores que ainda não jogaram juntos naquele "rodada".
-  const jaJogouComo: Record<string, Set<string>> = {}
-  playerIds.forEach(p => { jaJogouComo[p] = new Set() })
-
-  let posicao = 0
-  let rodada = 1
-
-  // Para N jogadores, existem N-1 "rodadas" onde cada rodada tem floor(N/2) jogos simultâneos.
-  // Vou gerar sequencialmente: para cada par que ainda não jogou junto, encontro um adversário possível.
-
-  const paresRestantes: [string, string][] = []
+  // Todos os pares (parcerias) que ainda precisam jogar juntos
+  const paresPendentes: [string, string][] = []
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      paresRestantes.push([playerIds[i], playerIds[j]])
+      paresPendentes.push([playerIds[i], playerIds[j]])
     }
   }
 
-  const usadosNaRodada = new Set<string>()
-  const paresPendentes = [...paresRestantes]
+  let rodada = 1
+  let posicao = 0
+  let safety = paresPendentes.length * 4 // trava contra loop infinito
 
-  while (paresPendentes.length > 0) {
-    // Pega o primeiro par que ainda não está usado nesta rodada
-    let idxA = paresPendentes.findIndex(([p1, p2]) => !usadosNaRodada.has(p1) && !usadosNaRodada.has(p2))
-    if (idxA === -1) {
-      // Não achou mais na rodada atual, começa próxima
-      usadosNaRodada.clear()
-      rodada++
-      idxA = 0
-    }
-    const [a1, a2] = paresPendentes[idxA]
+  while (paresPendentes.length > 0 && safety-- > 0) {
+    // Cada rodada: cada jogador aparece em no máximo 1 jogo
+    const usados = new Set<string>()
+    let jogoNaRodada = false
 
-    // Procura adversário (par cujos jogadores não são a1/a2 e não estão usados)
-    const idxB = paresPendentes.findIndex(([p1, p2], k) =>
-      k !== idxA &&
-      p1 !== a1 && p1 !== a2 && p2 !== a1 && p2 !== a2 &&
-      !usadosNaRodada.has(p1) && !usadosNaRodada.has(p2)
-    )
+    let i = 0
+    while (i < paresPendentes.length) {
+      const [a1, a2] = paresPendentes[i]
+      if (usados.has(a1) || usados.has(a2)) { i++; continue }
 
-    const d1 = getOuCriarDupla(a1, a2)
+      // Procura oponente sem overlap de jogador
+      let jOp = -1
+      for (let j = i + 1; j < paresPendentes.length; j++) {
+        const [b1, b2] = paresPendentes[j]
+        if (b1 === a1 || b1 === a2 || b2 === a1 || b2 === a2) continue
+        if (usados.has(b1) || usados.has(b2)) continue
+        jOp = j
+        break
+      }
+      if (jOp === -1) { i++; continue }
 
-    if (idxB !== -1) {
-      const [b1, b2] = paresPendentes[idxB]
-      const d2 = getOuCriarDupla(b1, b2)
+      const [b1, b2] = paresPendentes[jOp]
+      const d1 = ensureDupla(a1, a2)
+      const d2 = ensureDupla(b1, b2)
       jogos.push({
         id: nanoid(),
         torneioId,
@@ -99,17 +88,46 @@ export function gerarJogosReizinhoGrupo(
         dupla2Id: d2.id,
         status: 'aguardando',
       })
-      usadosNaRodada.add(a1); usadosNaRodada.add(a2)
-      usadosNaRodada.add(b1); usadosNaRodada.add(b2)
-      // Remove ambos (do maior índice pro menor para não desalinhar)
-      const [maior, menor] = idxA > idxB ? [idxA, idxB] : [idxB, idxA]
-      paresPendentes.splice(maior, 1)
-      paresPendentes.splice(menor, 1)
-    } else {
-      // Sem adversário na rodada, remove o par para tentar em outra combinação
-      // (na prática isso é raro, mas evita loop infinito)
-      paresPendentes.splice(idxA, 1)
+      usados.add(a1); usados.add(a2)
+      usados.add(b1); usados.add(b2)
+      paresPendentes.splice(jOp, 1)
+      paresPendentes.splice(i, 1)
+      jogoNaRodada = true
+      // não incrementa i — o item foi removido
     }
+
+    if (!jogoNaRodada) {
+      // Não conseguiu criar jogos com pares restantes.
+      // Pareia os que sobraram permitindo repetição de parceria (pares com jogador comum).
+      // Para cada par, procura QUALQUER oponente sem overlap de jogador.
+      while (paresPendentes.length >= 2) {
+        const [a1, a2] = paresPendentes[0]
+        let jOp = -1
+        for (let j = 1; j < paresPendentes.length; j++) {
+          const [b1, b2] = paresPendentes[j]
+          if (b1 !== a1 && b1 !== a2 && b2 !== a1 && b2 !== a2) { jOp = j; break }
+        }
+        if (jOp === -1) break // pares restantes todos compartilham um jogador
+        const [b1, b2] = paresPendentes[jOp]
+        const d1 = ensureDupla(a1, a2)
+        const d2 = ensureDupla(b1, b2)
+        jogos.push({
+          id: nanoid(),
+          torneioId,
+          fase: grupoNome,
+          rodada: rodada + 1,
+          posicaoChave: posicao++,
+          dupla1Id: d1.id,
+          dupla2Id: d2.id,
+          status: 'aguardando',
+        })
+        paresPendentes.splice(jOp, 1)
+        paresPendentes.splice(0, 1)
+      }
+      break // sai do loop principal
+    }
+
+    rodada++
   }
 
   return { duplas, jogos }
@@ -171,20 +189,17 @@ export function calcularRankingReizinho(
     const loserDupla = winnerDupla === d1 ? d2 : winnerDupla === d2 ? d1 : null
     if (!winnerDupla || !loserDupla) return
 
-    // Ganhadores
     ;[winnerDupla.jogador1Id, winnerDupla.jogador2Id].forEach(pid => {
       if (!map[pid]) return
       map[pid].vitorias++
       map[pid].pontos += 3
     })
-    // Perdedores
     ;[loserDupla.jogador1Id, loserDupla.jogador2Id].forEach(pid => {
       if (!map[pid]) return
       map[pid].derrotas++
       map[pid].pontos += 1
     })
 
-    // Saldo de games
     const p1 = jogo.placar1 ?? 0
     const p2 = jogo.placar2 ?? 0
     ;[d1.jogador1Id, d1.jogador2Id].forEach(pid => {
