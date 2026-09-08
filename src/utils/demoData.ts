@@ -3,12 +3,16 @@ import { nanoid } from './nanoid'
 
 export function getDemoTorneio(): Torneio {
   const id = nanoid()
-  const jogadores = Array.from({ length: 8 }, (_, i) => ({
-    id: nanoid(),
-    nome: `Jogador ${i + 1}`,
-    nivel: (i < 2 ? 'avancado' : i < 6 ? 'intermediario' : 'iniciante') as const,
-    criadoEm: new Date().toISOString(),
-  }))
+  const jogadores = Array.from({ length: 8 }, (_, i) => {
+    const nivel: 'iniciante' | 'intermediario' | 'avancado' =
+      i < 2 ? 'avancado' : i < 6 ? 'intermediario' : 'iniciante'
+    return {
+      id: nanoid(),
+      nome: `Jogador ${i + 1}`,
+      nivel,
+      criadoEm: new Date().toISOString(),
+    }
+  })
 
   const d1 = { id: nanoid(), jogador1Id: jogadores[0].id, jogador2Id: jogadores[1].id, seed: 1, criadoEm: new Date().toISOString() }
   const d2 = { id: nanoid(), jogador1Id: jogadores[2].id, jogador2Id: jogadores[3].id, seed: 2, criadoEm: new Date().toISOString() }
