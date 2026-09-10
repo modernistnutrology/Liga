@@ -5,6 +5,42 @@ import { nanoid } from '../utils/nanoid'
 import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
+import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
+
+/**
+ * Após todos jogos de grupos do "Todos contra Todos" acabarem, gera o mata-mata
+ * conforme a regra: melhor 1º + 2º melhor 1º forma dupla, e assim por diante.
+ * Empates são desempatados aleatoriamente.
+ */
+function maybeGerarMataMataTodos(
+  torneio: Torneio,
+  jogos: Jogo[],
+  duplas: Dupla[]
+): { jogos: Jogo[]; duplas: Dupla[] } {
+  const grupoFases = torneio.grupos.map(g => g.nome)
+  const jogosDeGrupo = jogos.filter(j => grupoFases.includes(j.fase))
+  const jogosDeMataMata = jogos.filter(j => !grupoFases.includes(j.fase))
+  if (jogosDeMataMata.length > 0) return { jogos, duplas }
+  const todosGruposFinalizados = jogosDeGrupo.length > 0 &&
+    jogosDeGrupo.every(j => j.status === 'finalizado' || j.status === 'wo')
+  if (!todosGruposFinalizados) return { jogos, duplas }
+
+  const novasDuplas = formarDuplasMataMataTodos({
+    id: torneio.id,
+    jogadores: torneio.jogadores,
+    grupos: torneio.grupos,
+    duplas,
+    jogos,
+    classificadosPorGrupo: torneio.classificadosPorGrupo,
+  })
+  if (novasDuplas.length < 2) return { jogos, duplas }
+
+  const jogosBracket = gerarChaveamentoEliminatorio(torneio.id, novasDuplas)
+  return {
+    jogos: [...jogos, ...jogosBracket],
+    duplas: [...duplas, ...novasDuplas],
+  }
+}
 
 /**
  * Retorna as duplas atualizadas se o reizinho gerou novas duplas para o mata-mata.
@@ -83,6 +119,7 @@ function maybeGerarMataMataReizinho(
  */
 function maybeGerarMataMata(torneio: Torneio, jogos: Jogo[]): Jogo[] {
   if (torneio.formato === 'reizinho') return jogos // tratado em separado
+  if (torneio.formato === 'todos_contra_todos') return jogos // tratado em separado
   if (torneio.formato !== 'grupos_e_mata_mata') return jogos
   if (torneio.grupos.length === 0) return jogos
 
@@ -285,6 +322,10 @@ export const useTorneioStore = create<TorneioStore>()(
           let novasDuplas = torneio.duplas
           if (torneio.formato === 'reizinho') {
             const res = maybeGerarMataMataReizinho(torneio, jogos, novasDuplas)
+            jogos = res.jogos
+            novasDuplas = res.duplas
+          } else if (torneio.formato === 'todos_contra_todos') {
+            const res = maybeGerarMataMataTodos(torneio, jogos, novasDuplas)
             jogos = res.jogos
             novasDuplas = res.duplas
           } else {

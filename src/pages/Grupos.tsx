@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
+import { calcularRankingTodos } from '../utils/todosContraTodos'
 import { Grid3X3, Crown, Edit2, ArrowLeftRight } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
@@ -34,13 +35,15 @@ export default function Grupos() {
 
   const classificados = torneio.classificadosPorGrupo ?? 2
   const isReizinho = torneio.formato === 'reizinho'
+  const isTodos = torneio.formato === 'todos_contra_todos'
+  const isIndividual = isReizinho || isTodos
 
   return (
     <div className="space-y-6 page-enter">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
           {isReizinho && <Crown className="text-yellow-300" size={28} />}
-          {isReizinho ? 'FASE REIZINHO' : 'FASE DE GRUPOS'}
+          {isReizinho ? 'FASE REIZINHO' : isTodos ? 'FASE DE GRUPOS' : 'FASE DE GRUPOS'}
         </h1>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -84,6 +87,8 @@ export default function Grupos() {
               {/* Classificação */}
               {isReizinho ? (
                 <RankingReizinho torneio={torneio} grupo={grupo} classificados={classificados} />
+              ) : isTodos ? (
+                <RankingTodos torneio={torneio} grupo={grupo} classificados={classificados} />
               ) : (
                 <RankingDuplas torneio={torneio} grupo={grupo} classificados={classificados} />
               )}
@@ -276,6 +281,47 @@ function RankingReizinho({ torneio, grupo, classificados }: any) {
               <td className="py-2 text-center text-emerald-400">{r.vitorias}</td>
               <td className="py-2 text-center text-red-400">{r.derrotas}</td>
               <td className="py-2 text-center font-bold text-yellow-300">{r.pontos}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function RankingTodos({ torneio, grupo, classificados }: any) {
+  const jogadoresIds = new Set<string>()
+  torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id)).forEach((d: any) => {
+    jogadoresIds.add(d.jogador1Id); jogadoresIds.add(d.jogador2Id)
+  })
+  const jogadoresMap = new Map<string, any>()
+  torneio.jogadores.forEach((j: any) => { if (jogadoresIds.has(j.id) && !jogadoresMap.has(j.id)) jogadoresMap.set(j.id, j) })
+  const jogadores = Array.from(jogadoresMap.values())
+  const ranking = calcularRankingTodos(jogadores, torneio.duplas, torneio.jogos, grupo.nome)
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-teal-600 border-b border-teal-800">
+            <th className="py-1.5 text-left">#</th>
+            <th className="py-1.5 text-left">Jogador</th>
+            <th className="py-1.5 text-center">J</th>
+            <th className="py-1.5 text-center">V</th>
+            <th className="py-1.5 text-center">D</th>
+            <th className="py-1.5 text-center">Saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ranking.map((r, i) => (
+            <tr key={r.jogador.id} className={`border-b border-teal-800/30 ${i < classificados ? "bg-emerald-500/5" : ""}`}>
+              <td className="py-2 pr-2">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-teal-950" : "bg-teal-800 text-teal-300"}`}>{i + 1}</span>
+              </td>
+              <td className="py-2 font-medium text-teal-100 truncate max-w-[120px]">{r.jogador.apelido || r.jogador.nome}</td>
+              <td className="py-2 text-center text-teal-300">{r.jogos}</td>
+              <td className="py-2 text-center text-emerald-400">{r.vitorias}</td>
+              <td className="py-2 text-center text-red-400">{r.derrotas}</td>
+              <td className="py-2 text-center font-bold text-yellow-300">{r.saldo > 0 ? `+${r.saldo}` : r.saldo}</td>
             </tr>
           ))}
         </tbody>

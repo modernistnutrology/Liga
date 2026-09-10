@@ -4,6 +4,7 @@ export type FormatoTorneio =
   | 'pontos_corridos'
   | 'dupla_eliminacao'
   | 'reizinho'
+  | 'todos_contra_todos'
 
 export type StatusJogo = 'aguardando' | 'em_andamento' | 'finalizado' | 'wo'
 export type StatusTorneio = 'configurando' | 'em_andamento' | 'finalizado'

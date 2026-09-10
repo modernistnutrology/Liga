@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target, Shuffle } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { FormatoTorneio } from '../types'
@@ -12,6 +12,7 @@ const formatos: { value: FormatoTorneio; label: string; desc: string; Icon: Luci
   { value: 'dupla_eliminacao', label: 'Dupla Eliminação', desc: 'Dois perdedores são eliminados', Icon: Repeat },
   { value: 'pontos_corridos', label: 'Pontos Corridos', desc: 'Todos jogam contra todos', Icon: BarChart2 },
   { value: 'grupos_e_mata_mata', label: 'Grupos + Mata-mata', desc: 'Fase de grupos e depois bracket', Icon: Target },
+  { value: 'todos_contra_todos', label: 'Todos contra Todos', desc: 'Grupos de 4 com rodízio de parceiros. Top 2 de cada grupo avança para mata-mata.', Icon: Shuffle },
 ]
 
 interface FormData {
@@ -65,7 +66,7 @@ export default function NovoTorneio() {
       maxDuplas: form.maxDuplas,
       totalGrupos: form.totalGrupos,
       classificadosPorGrupo: form.classificadosPorGrupo,
-      jogadoresPorGrupo: form.jogadoresPorGrupo,
+      jogadoresPorGrupo: form.formato === 'todos_contra_todos' ? 4 : form.jogadoresPorGrupo,
       tipoContagem: form.tipoContagem,
       status: 'configurando',
     })
@@ -181,6 +182,34 @@ export default function NovoTorneio() {
                   </select>
                 </div>
               </div>
+            )}
+
+            {form.formato === 'todos_contra_todos' && (
+              <>
+                <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-3 text-xs text-yellow-100">
+                  <strong className="text-yellow-300">Todos contra Todos:</strong> jogadores individuais, grupos de 4.
+                  Cada jogador joga uma vez com cada outro do grupo como parceiro (3 jogos por grupo).
+                  Classificação individual: vitórias e saldo. No mata-mata, os melhores 1º de cada grupo
+                  formam dupla entre si (melhor 1º + 2º melhor 1º), depois os 2º, e assim por diante.
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Grupos</label>
+                    <select className="select" value={form.totalGrupos} onChange={e => set('totalGrupos', Number(e.target.value))}>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16].map(n => <option key={n} value={n}>{n} grupo{n > 1 ? 's' : ''}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Classificados</label>
+                    <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
+                      {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n} por grupo</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="text-xs text-teal-400 italic">
+                  Total: {form.totalGrupos * 4} jogadores (grupos fixos de 4)
+                </div>
+              </>
             )}
 
 

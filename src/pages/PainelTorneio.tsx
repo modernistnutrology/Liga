@@ -34,6 +34,7 @@ export default function PainelTorneio() {
   const temGrupos = torneio.grupos.length > 0 ||
     torneio.formato === 'grupos_e_mata_mata' ||
     torneio.formato === 'reizinho' ||
+    torneio.formato === 'todos_contra_todos' ||
     torneio.formato === 'pontos_corridos'
 
   const acoes = [
