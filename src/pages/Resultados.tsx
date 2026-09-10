@@ -6,6 +6,7 @@ import LancarResultadoModal from '../components/resultados/LancarResultadoModal'
 import StatusBadge from '../components/torneio/StatusBadge'
 import type { Jogo } from '../types'
 import { ClipboardList } from 'lucide-react'
+import AlertaReizinho from '../components/duplas/AlertaReizinho'
 
 type Filtro = 'todos' | 'aguardando' | 'finalizado' | 'wo'
 
@@ -45,6 +46,8 @@ export default function Resultados() {
   return (
     <div className="space-y-4 page-enter">
       <h1 className="font-display text-4xl text-teal-50 tracking-wide">RESULTADOS</h1>
+
+      <AlertaReizinho torneio={torneio} />
 
       {torneio.jogos.length === 0 ? (
         <div className="text-center py-20 text-teal-600">

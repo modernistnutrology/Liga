@@ -10,6 +10,7 @@ import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { gerarCSVTorneio } from '../utils/exportarCSV'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
+import AlertaReizinho from '../components/duplas/AlertaReizinho'
 
 export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
@@ -144,6 +145,8 @@ export default function Chaveamento() {
 
   return (
     <div className="space-y-6 page-enter">
+      <AlertaReizinho torneio={torneio} />
+
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide">CHAVEAMENTO</h1>
         <div className="flex gap-2">

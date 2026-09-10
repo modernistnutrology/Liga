@@ -3,12 +3,12 @@ import { useParams } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
-import { Grid3X3, Crown, Edit2, ArrowLeftRight, AlertTriangle, Wrench } from 'lucide-react'
+import { Grid3X3, Crown, Edit2, ArrowLeftRight } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
 import TrocarJogadoresGrupoModal from '../components/duplas/TrocarJogadoresGrupoModal'
+import AlertaReizinho from '../components/duplas/AlertaReizinho'
 import { showToast } from '../components/ui/Toast'
-import { diagnosticarReizinho, repararReizinho, resetarReizinho } from '../utils/repararReizinho'
 
 export default function Grupos() {
   const { id } = useParams<{ id: string }>()
@@ -59,49 +59,7 @@ export default function Grupos() {
         </div>
       </div>
 
-      {isReizinho && (() => {
-        const diag = diagnosticarReizinho(torneio)
-        if (diag.ok) return null
-        return (
-          <div className="card p-4 border-red-500/40 bg-red-500/10 space-y-3">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
-              <div className="flex-1">
-                <h3 className="font-semibold text-red-300">Dados dos grupos com inconsistência</h3>
-                <ul className="text-xs text-teal-100 mt-1 list-disc list-inside">
-                  {diag.problemas.map((p, i) => <li key={i}>{p}</li>)}
-                </ul>
-                <p className="text-xs text-teal-200 mt-2">
-                  Isso costuma acontecer por dados antigos de sorteios anteriores. Escolha uma opção:
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => {
-                  const reparado = repararReizinho(torneio)
-                  atualizarTorneio(id!, reparado)
-                  showToast('Grupos reparados — mantidos só os N primeiros jogadores por grupo', 'success')
-                }}
-                className="btn-primary text-sm flex items-center gap-2"
-              >
-                <Wrench size={14} /> Reparar automaticamente
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm('Isso apaga grupos, duplas do rodízio e jogos. Você vai precisar refazer o sorteio. Continuar?')) {
-                    atualizarTorneio(id!, resetarReizinho(torneio))
-                    showToast('Reizinho zerado. Vá em Sorteio para reformar os grupos.', 'info')
-                  }
-                }}
-                className="btn-danger text-sm flex items-center gap-2"
-              >
-                Zerar e refazer sorteio
-              </button>
-            </div>
-          </div>
-        )
-      })()}
+      <AlertaReizinho torneio={torneio} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {torneio.grupos.map(grupo => {

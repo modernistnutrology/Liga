@@ -4,6 +4,7 @@ import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import type { RankingJogador } from '../utils/gerarReizinho'
 import { BarChart2, Crown } from 'lucide-react'
+import AlertaReizinho from '../components/duplas/AlertaReizinho'
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +21,8 @@ export default function Classificacao() {
         {isReizinho && <Crown className="text-yellow-300" size={28} />}
         CLASSIFICAÇÃO
       </h1>
+
+      <AlertaReizinho torneio={torneio} />
 
       {torneio.duplas.length === 0 ? (
         <div className="text-center py-20 text-teal-600">
