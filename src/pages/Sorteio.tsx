@@ -1,7 +1,8 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTorneioStore } from '../store/torneioStore'
-import { Shuffle, Check, AlertTriangle, ArrowRight, Star, Crown } from 'lucide-react'
+import { Shuffle, Check, AlertTriangle, ArrowRight, Star, Crown, Trash2 } from 'lucide-react'
+import { resetarReizinho } from '../utils/repararReizinho'
 import { sortearDuplas, shuffleArray } from '../utils/sorteioUtils'
 import { gerarChaveamentoEliminatorio, gerarJogosGrupos } from '../utils/gerarChaveamento'
 import { gerarJogosReizinhoGrupo, distribuirJogadoresEmGrupos } from '../utils/gerarReizinho'
@@ -213,9 +214,28 @@ export default function Sorteio() {
         )}
 
         {jaGerado && (
-          <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20">
-            <Check size={16} />
-            Reizinho já sorteado. Refazer vai apagar os resultados.
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 px-3 py-2 rounded-lg border border-emerald-500/20">
+              <Check size={16} />
+              Reizinho já sorteado. Refazer vai apagar os resultados.
+            </div>
+            <button
+              onClick={() => {
+                if (confirm(
+                  'ZERAR REIZINHO\n\n' +
+                  'Isso vai apagar TODOS os grupos, duplas e jogos do rodízio deste torneio.\n\n' +
+                  'Os JOGADORES são preservados. Depois você pode fazer um sorteio limpo.\n\n' +
+                  'Continuar?'
+                )) {
+                  store.atualizarTorneio(id!, resetarReizinho(torneio))
+                  showToast('Reizinho zerado. Faça o sorteio novamente.', 'info')
+                  setConfirmado(false)
+                }
+              }}
+              className="btn-danger flex items-center gap-2 text-sm"
+            >
+              <Trash2 size={14} /> Zerar tudo do Reizinho
+            </button>
           </div>
         )}
 

@@ -10,9 +10,8 @@ interface Props {
 }
 
 /**
- * Alerta que aparece quando os grupos do Reizinho têm inconsistência.
- * A única ação confiável é ZERAR e refazer o sorteio, pois não temos como saber
- * quais eram os jogadores corretos de cada grupo.
+ * Alerta com destaque forte que aparece quando os grupos do Reizinho têm inconsistência.
+ * Fica no topo da página com contraste alto para ser impossível não ver.
  */
 export default function AlertaReizinho({ torneio }: Props) {
   const atualizarTorneio = useTorneioStore(s => s.atualizarTorneio)
@@ -25,9 +24,9 @@ export default function AlertaReizinho({ torneio }: Props) {
 
   function handleZerar() {
     if (!confirm(
-      'Isso vai apagar TODOS os grupos, duplas e jogos do rodízio.\n\n' +
-      'Os JOGADORES cadastrados são preservados.\n' +
-      'Você será levado direto para o Sorteio para refazer.\n\n' +
+      'ATENÇÃO — Isso vai apagar TODOS os grupos, duplas e jogos do rodízio deste torneio.\n\n' +
+      'Os jogadores cadastrados são preservados.\n' +
+      'Você será levado para o Sorteio para refazer.\n\n' +
       'Continuar?'
     )) return
 
@@ -37,31 +36,32 @@ export default function AlertaReizinho({ torneio }: Props) {
   }
 
   return (
-    <div className="card p-4 border-red-500/60 bg-red-500/10 space-y-3">
+    <div className="rounded-xl bg-red-600 border-2 border-red-400 shadow-lg shadow-red-600/50 p-5 space-y-3">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={22} />
+        <AlertTriangle className="text-white flex-shrink-0 mt-0.5" size={26} />
         <div className="flex-1">
-          <h3 className="font-semibold text-red-300 text-base">Grupos com dados inconsistentes</h3>
-          <ul className="text-xs text-teal-100 mt-2 space-y-0.5">
+          <h3 className="font-bold text-white text-lg leading-tight">
+            Detectada corrupção nos grupos do Reizinho
+          </h3>
+          <ul className="text-sm text-red-50 mt-2 space-y-0.5">
             {diag.problemas.map((p, i) => (
               <li key={i}>· {p}</li>
             ))}
           </ul>
-          <p className="text-xs text-teal-200 mt-2 leading-relaxed">
-            Esses dados vieram de sorteios antigos misturados. Como não sabemos qual era a
-            composição original de cada grupo, a única forma segura de resolver é <strong>zerar e refazer o sorteio</strong>.
-            Os jogadores cadastrados são preservados.
+          <p className="text-sm text-red-50 mt-3 leading-relaxed">
+            Os dados estão inconsistentes por causa de sorteios antigos misturados.
+            <strong> Não tem como corrigir sem apagar</strong> — porque não sabemos a
+            composição original de cada grupo. Clique no botão abaixo para zerar
+            (jogadores são preservados) e refazer o sorteio limpo.
           </p>
         </div>
       </div>
-      <div className="flex gap-2 flex-wrap pt-2 border-t border-red-500/30">
-        <button
-          onClick={handleZerar}
-          className="btn-primary text-sm flex items-center gap-2"
-        >
-          Zerar e ir para o Sorteio <ArrowRight size={14} />
-        </button>
-      </div>
+      <button
+        onClick={handleZerar}
+        className="w-full bg-white hover:bg-red-50 text-red-700 font-bold px-4 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors text-base"
+      >
+        Zerar Reizinho e refazer sorteio <ArrowRight size={18} />
+      </button>
     </div>
   )
 }
