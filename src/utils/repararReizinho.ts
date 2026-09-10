@@ -94,7 +94,7 @@ export function repararReizinho(torneio: Torneio): { duplas: Dupla[]; jogos: Jog
 
   // Preserva também duplas/jogos de mata-mata (fora de grupos)
   const grupoNomes = new Set(torneio.grupos.map(g => g.nome))
-  const jogosMataMata = torneio.jogos.filter(j => !grupoNomes.includes(j.fase))
+  const jogosMataMata = torneio.jogos.filter(j => !grupoNomes.has(j.fase))
   const grupoDuplaIds = new Set(novasDuplas.map(d => d.id))
   const duplasMataMata = torneio.duplas.filter(d => !d.grupo && !grupoDuplaIds.has(d.id))
   novosJogos.push(...jogosMataMata)
