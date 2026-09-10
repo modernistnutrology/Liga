@@ -314,7 +314,12 @@ export const useTorneioStore = create<TorneioStore>()(
           let jogos = torneio.jogos.map(j => j.id === jogoId ? { ...j, ...data } : j)
           const jogoAtualizado = jogos.find(j => j.id === jogoId)!
 
-          if (jogoAtualizado.vencedorId) {
+          // avançarVencedor SÓ vale para BRACKET (mata-mata). Se o jogo é de grupo, NÃO avança
+          // (senão o vencedor sobrescreve as duplas de outros jogos do grupo).
+          const grupoNomes = new Set(torneio.grupos.map(g => g.nome))
+          const isJogoDeGrupo = grupoNomes.has(jogoAtualizado.fase)
+
+          if (jogoAtualizado.vencedorId && !isJogoDeGrupo) {
             avançarVencedor(jogos, jogoAtualizado)
           }
 
