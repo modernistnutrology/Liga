@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target, Crown } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { FormatoTorneio } from '../types'
@@ -12,7 +12,6 @@ const formatos: { value: FormatoTorneio; label: string; desc: string; Icon: Luci
   { value: 'dupla_eliminacao', label: 'Dupla Eliminação', desc: 'Dois perdedores são eliminados', Icon: Repeat },
   { value: 'pontos_corridos', label: 'Pontos Corridos', desc: 'Todos jogam contra todos', Icon: BarChart2 },
   { value: 'grupos_e_mata_mata', label: 'Grupos + Mata-mata', desc: 'Fase de grupos e depois bracket', Icon: Target },
-  { value: 'reizinho', label: 'Reizinho (Rodízio)', desc: 'Jogadores individuais rotacionam parceiros nos grupos; mata-mata forma duplas com os melhores', Icon: Crown },
 ]
 
 interface FormData {
@@ -160,14 +159,12 @@ export default function NovoTorneio() {
               </div>
             </div>
 
-            {form.formato !== 'reizinho' && (
-              <div>
-                <label className="label">Máximo de duplas</label>
-                <select className="select" value={form.maxDuplas} onChange={e => set('maxDuplas', Number(e.target.value))}>
-                  {[4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128].map(n => <option key={n} value={n}>{n} duplas</option>)}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="label">Máximo de duplas</label>
+              <select className="select" value={form.maxDuplas} onChange={e => set('maxDuplas', Number(e.target.value))}>
+                {[4, 6, 8, 10, 12, 16, 20, 24, 32, 48, 64, 96, 128].map(n => <option key={n} value={n}>{n} duplas</option>)}
+              </select>
+            </div>
 
             {form.formato === 'grupos_e_mata_mata' && (
               <div className="grid grid-cols-2 gap-3">
@@ -186,38 +183,6 @@ export default function NovoTorneio() {
               </div>
             )}
 
-            {form.formato === 'reizinho' && (
-              <>
-                <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-3 text-xs text-yellow-100">
-                  <strong className="text-yellow-300">Reizinho:</strong> jogadores individuais.
-                  No grupo, cada jogador joga uma vez com cada outro como parceiro.
-                  Pontuação é individual. No mata-mata, os melhores classificados formam duplas.
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="label">Jogadores</label>
-                    <select className="select" value={form.jogadoresPorGrupo} onChange={e => set('jogadoresPorGrupo', Number(e.target.value))}>
-                      {[4, 5, 6, 7, 8, 9, 10, 12].map(n => <option key={n} value={n}>{n} jogadores</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Grupos</label>
-                    <select className="select" value={form.totalGrupos} onChange={e => set('totalGrupos', Number(e.target.value))}>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16].map(n => <option key={n} value={n}>{n} grupo{n > 1 ? 's' : ''}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Classificados</label>
-                    <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
-                      {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n} classificado{n > 1 ? 's' : ''}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="text-xs text-teal-400 italic">
-                  Total: {form.jogadoresPorGrupo * form.totalGrupos} jogadores no torneio
-                </div>
-              </>
-            )}
 
             <div>
               <label className="label">Tipo de contagem</label>
