@@ -6,6 +6,31 @@ import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarCh
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
+import { gerarFaseFinal, fase1Concluida, FINAL_FASE } from '../utils/liga2Fases'
+
+/**
+ * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
+ * pega os 2 melhores de cada grupo (4 no total) e cria um novo grupo "Fase Final"
+ * com o mesmo formato "todos contra todos" (rodízio de parceiros).
+ */
+function maybeGerarFaseFinalLiga(
+  torneio: Torneio,
+  jogos: Jogo[],
+  duplas: Dupla[],
+  grupos: Grupo[]
+): { jogos: Jogo[]; duplas: Dupla[]; grupos: Grupo[] } {
+  // Se já tem grupo Fase Final, não recria
+  if (grupos.some(g => g.nome === FINAL_FASE)) return { jogos, duplas, grupos }
+  if (!fase1Concluida({ ...torneio, grupos } as Torneio, jogos)) return { jogos, duplas, grupos }
+
+  const res: any = gerarFaseFinal({ ...torneio, grupos } as Torneio, jogos, duplas)
+  if (!res || !res.grupoFinal) return { jogos, duplas, grupos }
+  return {
+    jogos: res.jogos,
+    duplas: res.duplas,
+    grupos: [...grupos, res.grupoFinal],
+  }
+}
 
 /**
  * Após todos jogos de grupos do "Todos contra Todos" acabarem, gera o mata-mata
@@ -120,6 +145,7 @@ function maybeGerarMataMataReizinho(
 function maybeGerarMataMata(torneio: Torneio, jogos: Jogo[]): Jogo[] {
   if (torneio.formato === 'reizinho') return jogos // tratado em separado
   if (torneio.formato === 'todos_contra_todos') return jogos // tratado em separado
+  if (torneio.formato === 'liga_2_fases') return jogos // tratado em separado
   if (torneio.formato !== 'grupos_e_mata_mata') return jogos
   if (torneio.grupos.length === 0) return jogos
 
@@ -325,6 +351,7 @@ export const useTorneioStore = create<TorneioStore>()(
 
           // AUTO: se acabou a fase de grupos, gera o mata-mata automaticamente
           let novasDuplas = torneio.duplas
+          let novosGrupos = torneio.grupos
           if (torneio.formato === 'reizinho') {
             const res = maybeGerarMataMataReizinho(torneio, jogos, novasDuplas)
             jogos = res.jogos
@@ -333,13 +360,18 @@ export const useTorneioStore = create<TorneioStore>()(
             const res = maybeGerarMataMataTodos(torneio, jogos, novasDuplas)
             jogos = res.jogos
             novasDuplas = res.duplas
+          } else if (torneio.formato === 'liga_2_fases') {
+            const res = maybeGerarFaseFinalLiga(torneio, jogos, novasDuplas, novosGrupos)
+            jogos = res.jogos
+            novasDuplas = res.duplas
+            novosGrupos = res.grupos
           } else {
             jogos = maybeGerarMataMata(torneio, jogos)
           }
 
           return {
             torneios: s.torneios.map(t =>
-              t.id === torneioId ? { ...t, jogos, duplas: novasDuplas, atualizadoEm: new Date().toISOString() } : t
+              t.id === torneioId ? { ...t, jogos, duplas: novasDuplas, grupos: novosGrupos, atualizadoEm: new Date().toISOString() } : t
             ),
           }
         })

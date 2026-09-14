@@ -163,7 +163,8 @@ export default function Sorteio() {
   }
 
   const isReizinho = torneio.formato === 'reizinho'
-  const isTodos = torneio.formato === 'todos_contra_todos'
+  const isTodos = torneio.formato === 'todos_contra_todos' || torneio.formato === 'liga_2_fases'
+  const isLiga2 = torneio.formato === 'liga_2_fases'
 
   // === TODOS CONTRA TODOS ===
   function aplicarDistribuicaoTodos(idsPorGrupo: string[][]) {
@@ -224,7 +225,7 @@ export default function Sorteio() {
       <div className="space-y-6 page-enter max-w-3xl">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide flex items-center gap-3">
           <Shuffle className="text-yellow-300" size={32} />
-          SORTEIO TODOS CONTRA TODOS
+          {isLiga2 ? 'SORTEIO LIGA 2 FASES' : 'SORTEIO TODOS CONTRA TODOS'}
         </h1>
 
         <div className="card p-4 space-y-3">

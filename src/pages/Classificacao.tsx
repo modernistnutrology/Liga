@@ -3,8 +3,9 @@ import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import type { RankingJogador } from '../utils/gerarReizinho'
-import { BarChart2, Crown } from 'lucide-react'
+import { BarChart2, Crown, Award } from 'lucide-react'
 import AlertaReizinho from '../components/duplas/AlertaReizinho'
+import { calcularPontuacaoLiga } from '../utils/liga2Fases'
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>()
@@ -13,6 +14,7 @@ export default function Classificacao() {
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
   const isReizinho = torneio.formato === 'reizinho'
+  const isLiga2 = torneio.formato === 'liga_2_fases'
   const classificacaoGeral = calcularClassificacao(torneio.duplas, torneio.jogos)
 
   return (
@@ -29,6 +31,8 @@ export default function Classificacao() {
           <BarChart2 size={48} className="mx-auto mb-3 opacity-30" />
           <p>Nenhuma dupla cadastrada.</p>
         </div>
+      ) : isLiga2 ? (
+        <ClassificacaoLiga2 torneio={torneio} />
       ) : isReizinho ? (
         <ClassificacaoReizinho torneio={torneio} />
       ) : torneio.grupos.length > 0 ? (
@@ -208,6 +212,49 @@ function TabelaClass({ linhas, classificados, jogadores }: { linhas: any[]; clas
         <div className="px-4 py-2 bg-teal-900/50 flex items-center gap-3 text-xs">
           <span className="w-3 h-3 rounded-sm bg-emerald-500/30 border-l-2 border-emerald-500 inline-block" />
           <span className="text-teal-300">Classificados para próxima fase</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ClassificacaoLiga2({ torneio }: any) {
+  const pontuacao = calcularPontuacaoLiga(torneio)
+  return (
+    <div className="card overflow-hidden">
+      <div className="p-4 border-b border-teal-800 flex items-center gap-2">
+        <Award className="text-yellow-300" size={20} />
+        <h2 className="font-display text-xl text-yellow-300 tracking-wide">RANKING GERAL — LIGA</h2>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
+              <th className="px-4 py-3 text-left">Pos</th>
+              <th className="px-4 py-3 text-left">Jogador</th>
+              <th className="px-3 py-3 text-center">Origem</th>
+              <th className="px-3 py-3 text-right">Pontos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pontuacao.map((p, i) => (
+              <tr key={p.jogador.id} className="border-b border-teal-800/50">
+                <td className="px-4 py-3">
+                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-teal-950" : i === 1 ? "bg-teal-600 text-white" : i === 2 ? "bg-yellow-600 text-white" : "bg-teal-800 text-teal-300"}`}>
+                    {i + 1}
+                  </span>
+                </td>
+                <td className="px-4 py-3 font-medium text-teal-50">{p.jogador.apelido || p.jogador.nome}</td>
+                <td className="px-3 py-3 text-center text-xs text-teal-300">{p.origem}</td>
+                <td className="px-3 py-3 text-right font-bold text-yellow-300 text-lg">{p.pontos}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pontuacao.length === 0 && (
+        <div className="p-8 text-center text-teal-400 text-sm">
+          Aguardando final dos jogos para calcular o ranking\u2026
         </div>
       )}
     </div>

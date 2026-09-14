@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target, Shuffle } from 'lucide-react'
+import { ChevronRight, ChevronLeft, Check, Trophy, Repeat, BarChart2, Target, Shuffle, Award } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { FormatoTorneio } from '../types'
@@ -13,6 +13,7 @@ const formatos: { value: FormatoTorneio; label: string; desc: string; Icon: Luci
   { value: 'pontos_corridos', label: 'Pontos Corridos', desc: 'Todos jogam contra todos', Icon: BarChart2 },
   { value: 'grupos_e_mata_mata', label: 'Grupos + Mata-mata', desc: 'Fase de grupos e depois bracket', Icon: Target },
   { value: 'todos_contra_todos', label: 'Todos contra Todos', desc: 'Grupos de 4 com rodízio de parceiros. Top 2 de cada grupo avança para mata-mata.', Icon: Shuffle },
+  { value: 'liga_2_fases', label: 'Liga 2 Fases (com pontuação)', desc: '2 grupos de 4 (rodízio). Top 2 de cada avança para Fase Final. Ranking geral: 1º=1000, 2º=750, 3º=500, 4º=400, eliminado c/vitória=250, s/vitória=150.', Icon: Award },
 ]
 
 interface FormData {
@@ -64,9 +65,9 @@ export default function NovoTorneio() {
       descricao: form.descricao,
       formato: form.formato,
       maxDuplas: form.maxDuplas,
-      totalGrupos: form.totalGrupos,
-      classificadosPorGrupo: form.classificadosPorGrupo,
-      jogadoresPorGrupo: form.formato === 'todos_contra_todos' ? 4 : form.jogadoresPorGrupo,
+      totalGrupos: form.formato === 'liga_2_fases' ? 2 : form.totalGrupos,
+      classificadosPorGrupo: form.formato === 'liga_2_fases' ? 2 : form.classificadosPorGrupo,
+      jogadoresPorGrupo: (form.formato === 'todos_contra_todos' || form.formato === 'liga_2_fases') ? 4 : form.jogadoresPorGrupo,
       tipoContagem: form.tipoContagem,
       status: 'configurando',
     })
@@ -180,6 +181,24 @@ export default function NovoTorneio() {
                   <select className="select" value={form.classificadosPorGrupo} onChange={e => set('classificadosPorGrupo', Number(e.target.value))}>
                     {[1, 2, 3, 4, 6, 8].map(n => <option key={n} value={n}>{n} dupla{n > 1 ? 's' : ''}</option>)}
                   </select>
+                </div>
+              </div>
+            )}
+
+            {form.formato === 'liga_2_fases' && (
+              <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/5 p-3 text-xs text-yellow-100 space-y-2">
+                <div><strong className="text-yellow-300">Liga 2 Fases:</strong> Exatamente <strong>8 jogadores</strong> (2 grupos de 4).</div>
+                <div>Cada grupo joga "todos contra todos" (rodízio de parceiros). Top 2 de cada grupo vai para a <strong>Fase Final</strong> — outro grupo de 4 no mesmo formato.</div>
+                <div className="pt-2 border-t border-yellow-400/20">
+                  <div className="font-semibold text-yellow-300 mb-1">Pontuação final:</div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5">
+                    <span>1º Fase Final: <strong>1000</strong></span>
+                    <span>2º Fase Final: <strong>750</strong></span>
+                    <span>3º Fase Final: <strong>500</strong></span>
+                    <span>4º Fase Final: <strong>400</strong></span>
+                    <span>Elim. c/ vitória: <strong>250</strong></span>
+                    <span>Elim. s/ vitória: <strong>150</strong></span>
+                  </div>
                 </div>
               </div>
             )}
