@@ -6,7 +6,7 @@ import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarCh
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
-import { gerarFaseFinal, fase1Concluida, FINAL_FASE } from '../utils/liga2Fases'
+import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
 
 /**
  * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
@@ -218,6 +218,9 @@ interface TorneioStore {
   // Grupos
   setGrupos: (torneioId: string, grupos: Grupo[]) => void
 
+  // Etapas (rodadas semanais da Liga por Temporada)
+  encerrarEtapaLigaEComecarNova: (torneioId: string) => void
+
   // Dark mode
   toggleDarkMode: () => void
 
@@ -383,6 +386,42 @@ export const useTorneioStore = create<TorneioStore>()(
             t.id === torneioId ? { ...t, grupos, atualizadoEm: new Date().toISOString() } : t
           ),
         }))
+      },
+
+      encerrarEtapaLigaEComecarNova: (torneioId) => {
+        set(s => {
+          const t = s.torneios.find(x => x.id === torneioId)
+          if (!t) return s
+          // Calcula pontuação da etapa atual
+          const pontuacaoAtual = calcularPontuacaoLiga(t).map(p => ({
+            jogadorId: p.jogador.id,
+            pontos: p.pontos,
+            origem: p.origem,
+            posicaoFinal: p.posicaoFinal,
+          }))
+          const proxNumero = (t.etapasFinalizadas?.length ?? 0) + 1
+          const novaEtapa = {
+            numero: proxNumero,
+            data: new Date().toISOString(),
+            pontuacao: pontuacaoAtual,
+          }
+          return {
+            torneios: s.torneios.map(x =>
+              x.id === torneioId
+                ? {
+                    ...x,
+                    etapasFinalizadas: [...(x.etapasFinalizadas ?? []), novaEtapa],
+                    // Zera estado da rodada atual — jogadores e config são preservados
+                    grupos: [],
+                    duplas: [],
+                    jogos: [],
+                    status: 'em_andamento',
+                    atualizadoEm: new Date().toISOString(),
+                  }
+                : x
+            ),
+          }
+        })
       },
 
       toggleDarkMode: () => set(s => ({ darkMode: !s.darkMode })),

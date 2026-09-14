@@ -26,7 +26,7 @@ export default function Classificacao() {
 
       <AlertaReizinho torneio={torneio} />
 
-      {torneio.duplas.length === 0 ? (
+      {torneio.duplas.length === 0 && (torneio.etapasFinalizadas?.length ?? 0) === 0 ? (
         <div className="text-center py-20 text-teal-600">
           <BarChart2 size={48} className="mx-auto mb-3 opacity-30" />
           <p>Nenhuma dupla cadastrada.</p>
@@ -58,31 +58,22 @@ export default function Classificacao() {
 
 function ClassificacaoReizinho({ torneio }: any) {
   const classificados = torneio.classificadosPorGrupo ?? 2
-
-  // Ranking individual POR GRUPO
   const rankingsPorGrupo = torneio.grupos.map((grupo: any) => {
     const jogadoresIds = new Set<string>()
     torneio.duplas.filter((d: any) => grupo.duplas.includes(d.id)).forEach((d: any) => {
-      jogadoresIds.add(d.jogador1Id)
-      jogadoresIds.add(d.jogador2Id)
+      jogadoresIds.add(d.jogador1Id); jogadoresIds.add(d.jogador2Id)
     })
     const jogadores = torneio.jogadores.filter((j: any) => jogadoresIds.has(j.id))
     const ranking = calcularRankingReizinho(jogadores, torneio.duplas, torneio.jogos, grupo.nome)
     return { grupo, ranking }
   })
 
-  // Ranking individual GERAL (todos os grupos combinados)
-  // Concatena e dedupa por jogador.id (jogador não pode aparecer 2x mesmo se estivesse em 2 grupos)
   const rankingMap = new Map<string, RankingJogador>()
   rankingsPorGrupo.forEach(({ ranking }: any) => {
     ranking.forEach((r: RankingJogador) => {
       const existente = rankingMap.get(r.jogador.id)
-      if (!existente) {
-        rankingMap.set(r.jogador.id, r)
-      } else {
-        // Se por acaso existir duplicado, ficamos com o de mais pontos
-        if (r.pontos > existente.pontos) rankingMap.set(r.jogador.id, r)
-      }
+      if (!existente) rankingMap.set(r.jogador.id, r)
+      else if (r.pontos > existente.pontos) rankingMap.set(r.jogador.id, r)
     })
   })
   const rankingGeral: RankingJogador[] = Array.from(rankingMap.values()).sort((a, b) => {
@@ -93,15 +84,12 @@ function ClassificacaoReizinho({ torneio }: any) {
 
   return (
     <div className="space-y-8">
-      {/* Ranking geral */}
       <div>
         <h2 className="font-display text-2xl text-yellow-300 tracking-wide mb-3 flex items-center gap-2">
           <Crown size={22} /> RANKING GERAL — INDIVIDUAL
         </h2>
         <TabelaReizinho ranking={rankingGeral} destaqueTop={3} />
       </div>
-
-      {/* Por grupo */}
       {rankingsPorGrupo.map(({ grupo, ranking }: any) => (
         <div key={grupo.id}>
           <h3 className="font-display text-xl text-yellow-300 tracking-wide mb-3">{grupo.nome}</h3>
@@ -132,8 +120,7 @@ function TabelaReizinho({ ranking, destaqueTop }: { ranking: RankingJogador[]; d
             {ranking.map((r, i) => (
               <tr key={r.jogador.id}
                 className={`border-b border-teal-800/50 transition-colors
-                  ${destaqueTop > 0 && i < destaqueTop ? 'bg-emerald-500/5 border-l-2 border-l-emerald-500' : ''}
-                `}
+                  ${destaqueTop > 0 && i < destaqueTop ? 'bg-emerald-500/5 border-l-2 border-l-emerald-500' : ''}`}
               >
                 <td className="px-4 py-3">
                   <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
@@ -186,8 +173,7 @@ function TabelaClass({ linhas, classificados, jogadores }: { linhas: any[]; clas
               <tr key={l.dupla.id}
                 className={`border-b border-teal-800/50 transition-colors
                   ${classificados > 0 && i < classificados ? 'bg-emerald-500/5 border-l-2 border-l-emerald-500' : ''}
-                  ${classificados > 0 && i >= linhas.length - 1 && linhas.length > 2 ? 'opacity-60' : ''}
-                `}
+                  ${classificados > 0 && i >= linhas.length - 1 && linhas.length > 2 ? 'opacity-60' : ''}`}
               >
                 <td className="px-4 py-3">
                   <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
@@ -219,42 +205,146 @@ function TabelaClass({ linhas, classificados, jogadores }: { linhas: any[]; clas
 }
 
 function ClassificacaoLiga2({ torneio }: any) {
-  const pontuacao = calcularPontuacaoLiga(torneio)
+  const encerrarEtapa = useTorneioStore(s => s.encerrarEtapaLigaEComecarNova)
+
+  const pontuacaoAtual = calcularPontuacaoLiga(torneio)
+  const etapas = torneio.etapasFinalizadas ?? []
+  const proximoNumero = etapas.length + 1
+
+  const jogosFaseFinal = torneio.jogos.filter((j: any) => j.fase === 'Fase Final')
+  const faseFinalConcluida = jogosFaseFinal.length > 0 &&
+    jogosFaseFinal.every((j: any) => j.status === 'finalizado' || j.status === 'wo')
+
+  const totalPorJogador = new Map<string, { pontos: number; participacoes: number; jogador: any }>()
+  const addPontos = (jogadorId: string, pontos: number) => {
+    const j = torneio.jogadores.find((x: any) => x.id === jogadorId)
+    if (!j) return
+    const atual = totalPorJogador.get(jogadorId) ?? { pontos: 0, participacoes: 0, jogador: j }
+    atual.pontos += pontos
+    atual.participacoes += 1
+    totalPorJogador.set(jogadorId, atual)
+  }
+  etapas.forEach((e: any) => e.pontuacao.forEach((p: any) => addPontos(p.jogadorId, p.pontos)))
+  if (faseFinalConcluida) {
+    pontuacaoAtual.forEach(p => addPontos(p.jogador.id, p.pontos))
+  }
+  const rankingGeral = Array.from(totalPorJogador.values()).sort((a, b) => b.pontos - a.pontos)
+
   return (
-    <div className="card overflow-hidden">
-      <div className="p-4 border-b border-teal-800 flex items-center gap-2">
-        <Award className="text-yellow-300" size={20} />
-        <h2 className="font-display text-xl text-yellow-300 tracking-wide">RANKING GERAL — LIGA</h2>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
-              <th className="px-4 py-3 text-left">Pos</th>
-              <th className="px-4 py-3 text-left">Jogador</th>
-              <th className="px-3 py-3 text-center">Origem</th>
-              <th className="px-3 py-3 text-right">Pontos</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pontuacao.map((p, i) => (
-              <tr key={p.jogador.id} className="border-b border-teal-800/50">
-                <td className="px-4 py-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-teal-950" : i === 1 ? "bg-teal-600 text-white" : i === 2 ? "bg-yellow-600 text-white" : "bg-teal-800 text-teal-300"}`}>
-                    {i + 1}
-                  </span>
-                </td>
-                <td className="px-4 py-3 font-medium text-teal-50">{p.jogador.apelido || p.jogador.nome}</td>
-                <td className="px-3 py-3 text-center text-xs text-teal-300">{p.origem}</td>
-                <td className="px-3 py-3 text-right font-bold text-yellow-300 text-lg">{p.pontos}</td>
+    <div className="space-y-6">
+      {rankingGeral.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-teal-800 flex items-center gap-2">
+            <Award className="text-yellow-300" size={22} />
+            <div>
+              <h2 className="font-display text-xl text-yellow-300 tracking-wide">RANKING GERAL DA TEMPORADA</h2>
+              <p className="text-xs text-teal-300 mt-0.5">
+                Soma de {etapas.length + (faseFinalConcluida ? 1 : 0)} rodada(s) — {etapas.length} finalizada(s){faseFinalConcluida ? ' + rodada atual' : ''}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
+                  <th className="px-4 py-3 text-left">Pos</th>
+                  <th className="px-4 py-3 text-left">Jogador</th>
+                  <th className="px-3 py-3 text-center">Rodadas</th>
+                  <th className="px-3 py-3 text-right">Pontos totais</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rankingGeral.map((r, i) => (
+                  <tr key={r.jogador.id} className="border-b border-teal-800/50">
+                    <td className="px-4 py-3">
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-teal-950" : i === 1 ? "bg-teal-600 text-white" : i === 2 ? "bg-yellow-600 text-white" : "bg-teal-800 text-teal-300"}`}>{i + 1}</span>
+                    </td>
+                    <td className="px-4 py-3 font-medium text-teal-50">{r.jogador.apelido || r.jogador.nome}</td>
+                    <td className="px-3 py-3 text-center text-teal-300 text-xs">{r.participacoes}</td>
+                    <td className="px-3 py-3 text-right font-bold text-yellow-300 text-lg">{r.pontos}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-teal-800 flex items-center gap-2 justify-between flex-wrap">
+          <div className="flex items-center gap-2">
+            <Award className="text-yellow-300/70" size={18} />
+            <h3 className="font-display text-lg text-yellow-300 tracking-wide">
+              Rodada {proximoNumero} — Pontuação atual
+            </h3>
+          </div>
+          {faseFinalConcluida && (
+            <button
+              onClick={() => {
+                if (confirm(`Encerrar Rodada ${proximoNumero} e começar a próxima?\n\nOs pontos desta rodada serão somados ao Ranking Geral. Os grupos e jogos serão zerados (jogadores preservados) para você fazer novo sorteio.`)) {
+                  encerrarEtapa(torneio.id)
+                }
+              }}
+              className="btn-primary text-sm flex items-center gap-2"
+            >
+              Encerrar rodada e começar próxima
+            </button>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
+                <th className="px-4 py-3 text-left">Pos</th>
+                <th className="px-4 py-3 text-left">Jogador</th>
+                <th className="px-3 py-3 text-center">Origem</th>
+                <th className="px-3 py-3 text-right">Pontos</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {pontuacaoAtual.map((p, i) => (
+                <tr key={p.jogador.id} className="border-b border-teal-800/50">
+                  <td className="px-4 py-3">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-yellow-400 text-teal-950" : i === 1 ? "bg-teal-600 text-white" : i === 2 ? "bg-yellow-600 text-white" : "bg-teal-800 text-teal-300"}`}>{i + 1}</span>
+                  </td>
+                  <td className="px-4 py-3 font-medium text-teal-50">{p.jogador.apelido || p.jogador.nome}</td>
+                  <td className="px-3 py-3 text-center text-xs text-teal-300">{p.origem}</td>
+                  <td className="px-3 py-3 text-right font-bold text-yellow-300 text-lg">{p.pontos}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {pontuacaoAtual.length === 0 && (
+          <div className="p-8 text-center text-teal-400 text-sm">
+            Aguardando final dos jogos da Rodada {proximoNumero}...
+          </div>
+        )}
       </div>
-      {pontuacao.length === 0 && (
-        <div className="p-8 text-center text-teal-400 text-sm">
-          Aguardando final dos jogos para calcular o ranking\u2026
+
+      {etapas.length > 0 && (
+        <div className="card p-4">
+          <h3 className="font-display text-lg text-yellow-300 tracking-wide mb-3">Rodadas finalizadas</h3>
+          <div className="space-y-2">
+            {etapas.map((e: any) => (
+              <details key={e.numero} className="border border-teal-800 rounded-lg">
+                <summary className="cursor-pointer p-3 text-sm text-teal-100 hover:bg-teal-800/30">
+                  Rodada {e.numero} — {new Date(e.data).toLocaleDateString('pt-BR')}
+                </summary>
+                <div className="p-3 border-t border-teal-800 space-y-1 text-xs">
+                  {e.pontuacao.map((p: any) => {
+                    const j = torneio.jogadores.find((x: any) => x.id === p.jogadorId)
+                    return (
+                      <div key={p.jogadorId} className="flex justify-between text-teal-200">
+                        <span>{j?.apelido || j?.nome || '?'} <span className="text-teal-500">— {p.origem}</span></span>
+                        <span className="font-bold text-yellow-300">{p.pontos} pts</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </details>
+            ))}
+          </div>
         </div>
       )}
     </div>

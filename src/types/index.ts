@@ -53,10 +53,24 @@ export interface Grupo {
   duplas: string[]
 }
 
+/** Uma "rodada" (etapa semanal) de uma Liga por Temporada. Congela a pontuação da rodada finalizada. */
+export interface EtapaHistorico {
+  numero: number
+  data: string
+  pontuacao: {
+    jogadorId: string
+    pontos: number
+    origem: string
+    posicaoFinal?: number
+  }[]
+}
+
 export interface Torneio {
   id: string
   nome: string
   descricao?: string
+  /** Rodadas anteriores já encerradas (só para formato liga_2_fases usado como temporada) */
+  etapasFinalizadas?: EtapaHistorico[]
   esporte: string
   formato: FormatoTorneio
   status: StatusTorneio
