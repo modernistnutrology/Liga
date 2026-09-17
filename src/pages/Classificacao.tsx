@@ -216,15 +216,23 @@ function ClassificacaoLiga2({ torneio }: any) {
     jogosFaseFinal.every((j: any) => j.status === 'finalizado' || j.status === 'wo')
 
   const totalPorJogador = new Map<string, { pontos: number; participacoes: number; jogador: any }>()
-  const addPontos = (jogadorId: string, pontos: number) => {
-    const j = torneio.jogadores.find((x: any) => x.id === jogadorId)
-    if (!j) return
-    const atual = totalPorJogador.get(jogadorId) ?? { pontos: 0, participacoes: 0, jogador: j }
+  const addPontos = (jogadorId: string, pontos: number, fallback?: { nome?: string; apelido?: string }) => {
+    const jRoster = torneio.jogadores.find((x: any) => x.id === jogadorId)
+    const jogador = jRoster ?? {
+      id: jogadorId,
+      nome: fallback?.nome || 'Jogador removido',
+      apelido: fallback?.apelido,
+    }
+    const atual = totalPorJogador.get(jogadorId) ?? { pontos: 0, participacoes: 0, jogador }
     atual.pontos += pontos
     atual.participacoes += 1
+    // Se antes só tínhamos o fallback e agora achamos no roster, atualiza a referência
+    if (jRoster) atual.jogador = jRoster
     totalPorJogador.set(jogadorId, atual)
   }
-  etapas.forEach((e: any) => e.pontuacao.forEach((p: any) => addPontos(p.jogadorId, p.pontos)))
+  etapas.forEach((e: any) => e.pontuacao.forEach((p: any) =>
+    addPontos(p.jogadorId, p.pontos, { nome: p.nome, apelido: p.apelido })
+  ))
   if (faseFinalConcluida) {
     pontuacaoAtual.forEach(p => addPontos(p.jogador.id, p.pontos))
   }
@@ -334,9 +342,10 @@ function ClassificacaoLiga2({ torneio }: any) {
                 <div className="p-3 border-t border-teal-800 space-y-1 text-xs">
                   {e.pontuacao.map((p: any) => {
                     const j = torneio.jogadores.find((x: any) => x.id === p.jogadorId)
+                    const displayName = j?.apelido || j?.nome || p.apelido || p.nome || 'Jogador removido'
                     return (
                       <div key={p.jogadorId} className="flex justify-between text-teal-200">
-                        <span>{j?.apelido || j?.nome || '?'} <span className="text-teal-500">— {p.origem}</span></span>
+                        <span>{displayName} <span className="text-teal-500">— {p.origem}</span></span>
                         <span className="font-bold text-yellow-300">{p.pontos} pts</span>
                       </div>
                     )

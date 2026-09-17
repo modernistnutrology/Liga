@@ -395,6 +395,8 @@ export const useTorneioStore = create<TorneioStore>()(
           // Calcula pontuação da etapa atual
           const pontuacaoAtual = calcularPontuacaoLiga(t).map(p => ({
             jogadorId: p.jogador.id,
+            nome: p.jogador.nome,
+            apelido: p.jogador.apelido,
             pontos: p.pontos,
             origem: p.origem,
             posicaoFinal: p.posicaoFinal,

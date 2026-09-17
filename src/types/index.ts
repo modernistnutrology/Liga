@@ -59,6 +59,8 @@ export interface EtapaHistorico {
   data: string
   pontuacao: {
     jogadorId: string
+    nome?: string
+    apelido?: string
     pontos: number
     origem: string
     posicaoFinal?: number
