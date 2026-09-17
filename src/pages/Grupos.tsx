@@ -35,8 +35,9 @@ export default function Grupos() {
 
   const classificados = torneio.classificadosPorGrupo ?? 2
   const isReizinho = torneio.formato === 'reizinho'
-  const isTodos = torneio.formato === 'todos_contra_todos'
+  const isTodos = torneio.formato === 'todos_contra_todos' || torneio.formato === 'liga_2_fases'
   const isIndividual = isReizinho || isTodos
+  void isIndividual
 
   return (
     <div className="space-y-6 page-enter">

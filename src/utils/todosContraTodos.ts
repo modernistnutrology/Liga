@@ -128,7 +128,8 @@ export function calcularRankingTodos(
     .sort((a, b) => {
       if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias
       if (b.saldo !== a.saldo) return b.saldo - a.saldo
-      return 0 // empate — será resolvido aleatório na formação das duplas
+      // Empate em vitorias e saldo → escolhe um deterministicamente (por id do jogador)
+      return a.jogador.id.localeCompare(b.jogador.id)
     })
 }
 
