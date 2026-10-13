@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
@@ -31,9 +31,7 @@ export default function RodadaEstruturadaPage() {
   if (!estr) return <div className="p-8 text-teal-300">Esta rodada é manual (sem jogos lançados).</div>
 
   const fases = fasesFinalizadas(estr)
-  const jogadoresDaRodada = useMemo(() =>
-    temporada.jogadores.filter(j => estr.jogadoresIds.includes(j.id)),
-  [temporada.jogadores, estr.jogadoresIds])
+  const jogadoresDaRodada = temporada.jogadores.filter(j => estr.jogadoresIds.includes(j.id))
   const nome = (jid: string) => jogadoresDaRodada.find(j => j.id === jid)?.nome ?? '?'
 
   function updateJogo(jogoId: string, patch: Partial<JogoRodada>) {
