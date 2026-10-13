@@ -513,11 +513,27 @@ function SetupNovaRodada({
             </div>
           </div>
 
-          <div className="flex gap-2 justify-end border-t border-teal-800 pt-4">
-            <button onClick={onCancelar} className="btn-secondary">Cancelar</button>
-            <button onClick={sortearECriar} disabled={selecionados.length !== 8} className="btn-primary flex items-center gap-2 disabled:opacity-50">
-              <Shuffle size={16} /> Sortear grupos e começar
-            </button>
+          <div className="border-t border-teal-800 pt-4 space-y-2">
+            {selecionados.length !== tamanho && (
+              <p className="text-xs text-yellow-300 text-right">
+                {selecionados.length < tamanho
+                  ? `Faltam ${tamanho - selecionados.length} jogador(es) para habilitar o sorteio`
+                  : `Desmarque ${selecionados.length - tamanho} jogador(es) para ficar com ${tamanho}`}
+              </p>
+            )}
+            <div className="flex gap-2 justify-end">
+              <button onClick={onCancelar} className="btn-secondary">Cancelar</button>
+              <button
+                onClick={sortearECriar}
+                disabled={selecionados.length !== tamanho}
+                className="btn-primary flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Shuffle size={16} />
+                {selecionados.length === tamanho
+                  ? 'Sortear grupos e começar'
+                  : `Faltam ${Math.max(0, tamanho - selecionados.length)}`}
+              </button>
+            </div>
           </div>
         </div>
       </div>
