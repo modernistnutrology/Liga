@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
-import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, calcularPontosRodada, getGrupos, nomeGrupo } from '../utils/rodadaEstruturada'
+import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 
 export default function RodadaEstruturadaPage() {
@@ -45,7 +45,14 @@ export default function RodadaEstruturadaPage() {
     if (!estr) return
     const nextEstr = gerarFaseFinal(estr)
     atualizarRodadaEstruturada(temporada!.id, rodada!.id, nextEstr)
-    showToast('Fase Final gerada!', 'success')
+    showToast(getGrupos(estr).length === 3 ? 'Semifinais geradas!' : 'Fase Final gerada!', 'success')
+  }
+
+  function avancarFinais() {
+    if (!estr) return
+    const nextEstr = gerarFinais(estr)
+    atualizarRodadaEstruturada(temporada!.id, rodada!.id, nextEstr)
+    showToast('Final e disputa de 3º geradas!', 'success')
   }
 
   function finalizar() {
@@ -55,6 +62,9 @@ export default function RodadaEstruturadaPage() {
     showToast('Pontos lançados no ranking!', 'success')
     navigate(`/temporada/${temporada!.id}`)
   }
+
+  const status = statusDetalhado(estr)
+  const is12 = getGrupos(estr).length === 3
 
   return (
     <div className="min-h-screen bg-teal-950 safe-top">
@@ -71,7 +81,20 @@ export default function RodadaEstruturadaPage() {
           </div>
         </div>
 
-        <StepBar fases={fases} finalizada={estr.finalizada} />
+        <StepBar
+          steps={is12
+            ? [
+                ...status.fasesGrupos.grupos.map((ok, i) => ({ label: nomeGrupo(i), ok })),
+                { label: 'Semis', ok: status.semisOk },
+                { label: 'Final/3º', ok: status.finaisOk },
+                { label: 'Pontos', ok: !!estr.finalizada },
+              ]
+            : [
+                ...status.fasesGrupos.grupos.map((ok, i) => ({ label: nomeGrupo(i), ok })),
+                { label: 'Fase Final', ok: status.fasesGrupos.faseFinal },
+                { label: 'Pontos', ok: !!estr.finalizada },
+              ]}
+        />
 
         {/* Grupos (2 ou 3) */}
         {getGrupos(estr).map((ids, i) => (
@@ -87,8 +110,8 @@ export default function RodadaEstruturadaPage() {
           />
         ))}
 
-        {/* Fase Final */}
-        {fases.todosGrupos && !estr.faseFinalIds && (
+        {/* Fase Final — formato 8 (rodízio) */}
+        {!is12 && fases.todosGrupos && !estr.faseFinalIds && (
           <div className="card p-6 text-center">
             <p className="text-teal-200 mb-3">Fase 1 completa! Gerar Fase Final com os 4 classificados.</p>
             <button onClick={avancarFaseFinal} className="btn-primary flex items-center gap-2 mx-auto">
@@ -96,8 +119,7 @@ export default function RodadaEstruturadaPage() {
             </button>
           </div>
         )}
-
-        {estr.faseFinalIds && (
+        {!is12 && estr.faseFinalIds && (
           <FaseCard
             titulo="Fase Final"
             jogos={estr.jogos.filter(j => j.fase === 'Fase Final')}
@@ -109,34 +131,134 @@ export default function RodadaEstruturadaPage() {
             destacado
           />
         )}
+        {!is12 && fases.faseFinal && (
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} onFinalizar={finalizar} />
+        )}
 
-        {/* Resumo e finalização */}
-        {fases.faseFinal && (
-          <ResumoFinal
-            estr={estr}
-            jogadores={jogadoresDaRodada}
-            finalizada={!!estr.finalizada}
-            onFinalizar={finalizar}
-          />
+        {/* Mata-mata — formato 12 */}
+        {is12 && fases.todosGrupos && !status.temSemis && (
+          <div className="card p-6 text-center">
+            <p className="text-teal-200 mb-2">Fase 1 completa! Gerar semifinais com os 8 classificados:</p>
+            <p className="text-xs text-teal-400 mb-3">3 primeiros + 3 segundos + 2 melhores terceiros</p>
+            <button onClick={avancarFaseFinal} className="btn-primary flex items-center gap-2 mx-auto">
+              <Shuffle size={16} /> Gerar Semifinais
+            </button>
+          </div>
+        )}
+        {is12 && status.temSemis && (
+          <>
+            <MatchCard
+              titulo="Semi 1"
+              subtitulo="2 melhores 1ºs lugares vs 2 melhores 3ºs lugares"
+              jogo={estr.jogos.find(j => j.fase === 'Semi 1')!}
+              nome={nome}
+              onPlacar={updateJogo}
+            />
+            <MatchCard
+              titulo="Semi 2"
+              subtitulo="3º melhor 1º + melhor 2º  vs  2º + 3º melhores 2ºs"
+              jogo={estr.jogos.find(j => j.fase === 'Semi 2')!}
+              nome={nome}
+              onPlacar={updateJogo}
+            />
+          </>
+        )}
+        {is12 && status.semisOk && !status.temFinais && (
+          <div className="card p-6 text-center">
+            <p className="text-teal-200 mb-3">Semis finalizadas! Gerar Final e Disputa de 3º lugar.</p>
+            <button onClick={avancarFinais} className="btn-primary flex items-center gap-2 mx-auto">
+              <Shuffle size={16} /> Gerar Final + 3º lugar
+            </button>
+          </div>
+        )}
+        {is12 && status.temFinais && (
+          <>
+            <MatchCard
+              titulo="FINAL"
+              subtitulo="Vencedores das semifinais"
+              jogo={estr.jogos.find(j => j.fase === 'Final')!}
+              nome={nome}
+              onPlacar={updateJogo}
+              destacado
+            />
+            <MatchCard
+              titulo="Disputa 3º lugar"
+              subtitulo="Perdedores das semifinais"
+              jogo={estr.jogos.find(j => j.fase === 'Disputa 3º lugar')!}
+              nome={nome}
+              onPlacar={updateJogo}
+            />
+          </>
+        )}
+        {is12 && status.finaisOk && (
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} onFinalizar={finalizar} />
         )}
       </div>
     </div>
   )
 }
 
-function StepBar({ fases, finalizada }: { fases: { grupos: boolean[]; todosGrupos: boolean; faseFinal: boolean }; finalizada: boolean }) {
-  const steps = [
-    ...fases.grupos.map((ok, i) => ({ label: nomeGrupo(i), ok })),
-    { label: 'Fase Final', ok: fases.faseFinal },
-    { label: 'Pontos', ok: finalizada },
-  ]
+function StepBar({ steps }: { steps: { label: string; ok: boolean }[] }) {
   return (
     <div className="flex gap-2 flex-wrap">
       {steps.map((s, i) => (
-        <div key={i} className={`flex-1 min-w-[80px] rounded-lg px-3 py-2 text-xs text-center border ${s.ok ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-teal-900/40 border-teal-800 text-teal-400'}`}>
+        <div key={i} className={`flex-1 min-w-[70px] rounded-lg px-2 py-2 text-xs text-center border ${s.ok ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-teal-900/40 border-teal-800 text-teal-400'}`}>
           {s.ok && <CheckCircle2 size={12} className="inline mr-1" />} {s.label}
         </div>
       ))}
+    </div>
+  )
+}
+
+function MatchCard({
+  titulo, subtitulo, jogo, nome, onPlacar, destacado,
+}: {
+  titulo: string
+  subtitulo?: string
+  jogo: JogoRodada
+  nome: (id: string) => string
+  onPlacar: (jogoId: string, patch: Partial<JogoRodada>) => void
+  destacado?: boolean
+}) {
+  if (!jogo) return null
+  return (
+    <div className={`card overflow-hidden ${destacado ? 'ring-2 ring-yellow-400/50' : ''}`}>
+      <div className="p-3 border-b border-teal-800 flex items-center gap-2">
+        <Trophy className="text-yellow-300" size={18} />
+        <div>
+          <h2 className="font-display text-lg text-yellow-300 tracking-wide leading-none">{titulo}</h2>
+          {subtitulo && <p className="text-[11px] text-teal-400 mt-0.5">{subtitulo}</p>}
+        </div>
+      </div>
+      <div className="p-3 flex items-center gap-2 text-sm bg-teal-900/20">
+        <span className="flex-1 text-right text-teal-100">
+          <strong>{nome(jogo.dupla[0])}</strong> / {nome(jogo.dupla[1])}
+        </span>
+        <input
+          type="number" inputMode="numeric" className="input w-14 text-center"
+          placeholder="-" value={jogo.placar1 ?? ''}
+          onChange={e => onPlacar(jogo.id, { placar1: e.target.value === '' ? undefined : Number(e.target.value) })}
+        />
+        <span className="text-teal-500">×</span>
+        <input
+          type="number" inputMode="numeric" className="input w-14 text-center"
+          placeholder="-" value={jogo.placar2 ?? ''}
+          onChange={e => onPlacar(jogo.id, { placar2: e.target.value === '' ? undefined : Number(e.target.value) })}
+        />
+        <span className="flex-1 text-left text-teal-100">
+          <strong>{nome(jogo.dupla2[0])}</strong> / {nome(jogo.dupla2[1])}
+        </span>
+        <button
+          onClick={() => {
+            const ok = jogo.placar1 !== undefined && jogo.placar2 !== undefined
+            onPlacar(jogo.id, { finalizado: ok && !jogo.finalizado })
+          }}
+          className={`p-1.5 rounded-lg border ${jogo.finalizado ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'border-teal-700 text-teal-400 hover:border-yellow-400/40'}`}
+          title={jogo.finalizado ? 'Reabrir' : 'Finalizar jogo'}
+        >
+          <CheckCircle2 size={14} />
+        </button>
+      </div>
     </div>
   )
 }
