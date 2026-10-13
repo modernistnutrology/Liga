@@ -7,12 +7,12 @@ import Modal from './ui/Modal'
 import { showToast } from './ui/Toast'
 
 export default function BackupCard() {
-  const { torneios, temporadas, importarDados } = useTorneioStore()
+  const { torneios, temporadas, planilhaConfig, importarDados, setPlanilhaConfig } = useTorneioStore()
   const inputRef = useRef<HTMLInputElement>(null)
   const [pendente, setPendente] = useState<BackupDados | null>(null)
 
   async function exportar() {
-    const r = await exportarBackup(torneios, temporadas)
+    const r = await exportarBackup(torneios, temporadas, planilhaConfig)
     if (r === 'compartilhado') showToast('Backup gerado!', 'success')
     if (r === 'baixado') showToast('Backup baixado!', 'success')
   }
@@ -31,6 +31,9 @@ export default function BackupCard() {
   function confirmar(modo: 'substituir' | 'mesclar') {
     if (!pendente) return
     importarDados({ torneios: pendente.torneios, temporadas: pendente.temporadas }, modo)
+    if (pendente.planilhaConfig && (modo === 'substituir' || !planilhaConfig)) {
+      setPlanilhaConfig(pendente.planilhaConfig)
+    }
     setPendente(null)
     showToast(modo === 'substituir' ? 'Dados substituídos pelo backup!' : 'Backup mesclado!', 'success')
   }

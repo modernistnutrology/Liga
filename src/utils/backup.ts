@@ -1,4 +1,5 @@
 import type { Torneio, Temporada } from '../types'
+import type { PlanilhaConfig } from './planilhaSync'
 
 const APP_ID = 'liga-village-padel'
 const VERSAO = 1
@@ -9,15 +10,21 @@ export interface BackupDados {
   geradoEm: string
   torneios: Torneio[]
   temporadas: Temporada[]
+  planilhaConfig?: PlanilhaConfig | null
 }
 
-export async function exportarBackup(torneios: Torneio[], temporadas: Temporada[]): Promise<'compartilhado' | 'baixado' | 'cancelado'> {
+export async function exportarBackup(
+  torneios: Torneio[],
+  temporadas: Temporada[],
+  planilhaConfig: PlanilhaConfig | null
+): Promise<'compartilhado' | 'baixado' | 'cancelado'> {
   const dados: BackupDados = {
     app: APP_ID,
     versao: VERSAO,
     geradoEm: new Date().toISOString(),
     torneios,
     temporadas,
+    planilhaConfig,
   }
   const json = JSON.stringify(dados, null, 2)
   const filename = `backup_liga_village_${new Date().toISOString().slice(0, 10)}.json`

@@ -1,4 +1,39 @@
-import type { Temporada } from '../types'
+import type { Temporada, JogadorTemporada, Liga } from '../types'
+
+export interface LinhaRankingTemporada {
+  pos: number
+  jogador: JogadorTemporada
+  pontos: number
+  rodadasJogadas: number
+}
+
+/** Ranking acumulado da temporada; empates em pontos dividem a mesma posição. */
+export function calcularRankingTemporada(t: Temporada, liga?: Liga): LinhaRankingTemporada[] {
+  const base = t.jogadores
+    .filter(j => !liga || j.liga === liga)
+    .map(j => {
+      let pontos = 0
+      let rodadasContadas = 0
+      let jogouImportada = false
+      for (const r of t.rodadas) {
+        const p = r.pontos.find(x => x.jogadorId === j.id)
+        if (!p || p.pontos <= 0) continue
+        pontos += p.pontos
+        if (r.importada) jogouImportada = true
+        else rodadasContadas++
+      }
+      const rodadasDaPlanilha = j.rodadasJogadasOverride ?? (jogouImportada ? 1 : 0)
+      return { jogador: j, pontos, rodadasJogadas: rodadasDaPlanilha + rodadasContadas }
+    })
+    .sort((a, b) => b.pontos - a.pontos || a.jogador.nome.localeCompare(b.jogador.nome))
+
+  let ultimaPos = 0
+  let ultimoPts = Infinity
+  return base.map((l, i) => {
+    if (l.pontos < ultimoPts) { ultimaPos = i + 1; ultimoPts = l.pontos }
+    return { ...l, pos: ultimaPos }
+  })
+}
 
 const NOME_RODADA_IMPORTADA = 'Totais acumulados (importado da planilha)'
 const RODADAS_NA_PLANILHA = 4

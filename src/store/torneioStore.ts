@@ -9,6 +9,7 @@ import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
 import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
 import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
 import { normalizarTemporada, proximoNumeroRodada } from '../utils/temporada'
+import type { PlanilhaConfig } from '../utils/planilhaSync'
 
 /**
  * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
@@ -197,6 +198,11 @@ interface TorneioStore {
   torneios: Torneio[]
   temporadas: Temporada[]
   darkMode: boolean
+  planilhaConfig: PlanilhaConfig | null
+  /** temporadaId → atualizadoEm da temporada no último envio bem-sucedido */
+  ultimoEnvioPlanilha: Record<string, string>
+  setPlanilhaConfig: (config: PlanilhaConfig | null) => void
+  marcarEnvioPlanilha: (temporadaId: string, atualizadoEm: string) => void
 
   // Temporada CRUD
   criarTemporada: (nome: string) => string
@@ -253,6 +259,11 @@ export const useTorneioStore = create<TorneioStore>()(
       torneios: [],
       temporadas: [],
       darkMode: true,
+      planilhaConfig: null,
+      ultimoEnvioPlanilha: {},
+      setPlanilhaConfig: (config) => set({ planilhaConfig: config }),
+      marcarEnvioPlanilha: (temporadaId, atualizadoEm) =>
+        set(s => ({ ultimoEnvioPlanilha: { ...s.ultimoEnvioPlanilha, [temporadaId]: atualizadoEm } })),
 
       criarTemporada: (nome) => {
         const id = nanoid()

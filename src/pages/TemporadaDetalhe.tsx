@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2, Users, Trophy, Award, CalendarPlus, X, Pencil, ExternalLink, Play, Edit3 } from 'lucide-react'
 
@@ -6,7 +6,8 @@ const PLANILHA_URL = 'https://docs.google.com/spreadsheets/d/1AxSTiaNCDWi56xjnG-
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
-import { totalRodadas, rotuloRodada } from '../utils/temporada'
+import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
+import { totalRodadas, rotuloRodada, calcularRankingTemporada } from '../utils/temporada'
 import { showToast } from '../components/ui/Toast'
 
 type Filtro = 'todas' | 'A' | 'B'
@@ -43,30 +44,7 @@ export default function TemporadaDetalhe() {
     )
   }
 
-  const ranking = useMemo(() => {
-    const base = temporada.jogadores.map(j => {
-      let pontos = 0
-      let rodadasContadas = 0
-      let jogouImportada = false
-      for (const r of temporada.rodadas) {
-        const p = r.pontos.find(x => x.jogadorId === j.id)
-        if (!p || p.pontos <= 0) continue
-        pontos += p.pontos
-        if (r.importada) jogouImportada = true
-        else rodadasContadas++
-      }
-      const rodadasDaPlanilha = j.rodadasJogadasOverride ?? (jogouImportada ? 1 : 0)
-      const rodadasJogadas = rodadasDaPlanilha + rodadasContadas
-      return { jogador: j, pontos, rodadasJogadas }
-    })
-    const filt = filtro === 'todas' ? base : base.filter(l => l.jogador.liga === filtro)
-    const ord = filt.sort((a, b) => b.pontos - a.pontos || a.jogador.nome.localeCompare(b.jogador.nome))
-    let ultimaPos = 0, ultimoPts = Infinity
-    return ord.map((l, i) => {
-      if (l.pontos < ultimoPts) { ultimaPos = i + 1; ultimoPts = l.pontos }
-      return { ...l, pos: ultimaPos }
-    })
-  }, [temporada, filtro])
+  const ranking = calcularRankingTemporada(temporada, filtro === 'todas' ? undefined : filtro)
 
   function addJogador() {
     const n = novoNome.trim()
@@ -127,6 +105,8 @@ export default function TemporadaDetalhe() {
           <StatCard label="Rodadas" valor={totalRodadas(temporada)} />
           <StatCard label="Liga A / B" valor={`${temporada.jogadores.filter(j => j.liga === 'A').length} / ${temporada.jogadores.filter(j => j.liga === 'B').length}`} />
         </div>
+
+        <PlanilhaSyncPanel temporada={temporada} />
 
         {/* Toolbar: filtro + nova rodada */}
         <div className="flex items-center justify-between flex-wrap gap-3">
