@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Trophy, Trash2, ChevronRight, Users, Calendar, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, Trophy, Trash2, ChevronRight, Users, Calendar, ExternalLink, Download } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import { showToast } from '../components/ui/Toast'
 
 export default function TemporadasHome() {
   const navigate = useNavigate()
-  const { temporadas, criarTemporada, excluirTemporada } = useTorneioStore()
+  const { temporadas, criarTemporada, excluirTemporada, importarTemporadaVillage } = useTorneioStore()
   const [novoNome, setNovoNome] = useState('')
   const [confirmar, setConfirmar] = useState<string | null>(null)
 
@@ -43,9 +43,9 @@ export default function TemporadasHome() {
 
         <div className="card p-4">
           <h2 className="text-sm text-teal-300 uppercase tracking-wider mb-3">Nova temporada</h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <input
-              className="input flex-1"
+              className="input flex-1 min-w-[180px]"
               placeholder="Ex: Temporada 2026"
               value={novoNome}
               onChange={e => setNovoNome(e.target.value)}
@@ -53,6 +53,21 @@ export default function TemporadasHome() {
             />
             <button onClick={criar} className="btn-primary flex items-center gap-2">
               <Plus size={16} /> Criar
+            </button>
+          </div>
+          <div className="mt-3 pt-3 border-t border-teal-800/60 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-xs text-teal-400">
+              Ou importe a temporada atual do Village (37 jogadores, pontos e rodadas da planilha).
+            </p>
+            <button
+              onClick={() => {
+                const id = importarTemporadaVillage()
+                showToast('Temporada Village importada!', 'success')
+                navigate(`/temporada/${id}`)
+              }}
+              className="btn-secondary text-sm flex items-center gap-2 border-yellow-400/40 text-yellow-300 hover:bg-yellow-400/10"
+            >
+              <Download size={14} /> Importar temporada atual
             </button>
           </div>
         </div>

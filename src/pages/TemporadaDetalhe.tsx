@@ -41,11 +41,12 @@ export default function TemporadaDetalhe() {
   const ranking = useMemo(() => {
     const base = temporada.jogadores.map(j => {
       let pontos = 0
-      let rodadasJogadas = 0
+      let rodadasContadas = 0
       for (const r of temporada.rodadas) {
         const p = r.pontos.find(x => x.jogadorId === j.id)
-        if (p && p.pontos > 0) { pontos += p.pontos; rodadasJogadas++ }
+        if (p && p.pontos > 0) { pontos += p.pontos; rodadasContadas++ }
       }
+      const rodadasJogadas = j.rodadasJogadasOverride ?? rodadasContadas
       return { jogador: j, pontos, rodadasJogadas }
     })
     const filt = filtro === 'todas' ? base : base.filter(l => l.jogador.liga === filtro)

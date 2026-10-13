@@ -74,6 +74,8 @@ export interface JogadorTemporada {
   id: string
   nome: string
   liga: Liga
+  /** Opcional: sobrescreve a contagem de rodadas jogadas (usado em dados importados). */
+  rodadasJogadasOverride?: number
   criadoEm: string
 }
 

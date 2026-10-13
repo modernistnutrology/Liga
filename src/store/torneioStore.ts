@@ -7,6 +7,7 @@ import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
 import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
+import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
 
 /**
  * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
@@ -206,6 +207,7 @@ interface TorneioStore {
   adicionarRodadaTemporada: (temporadaId: string, rodada: Omit<RodadaTemporada, 'id' | 'numero'>) => void
   editarRodadaTemporada: (temporadaId: string, rodadaId: string, data: Partial<RodadaTemporada>) => void
   removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
+  importarTemporadaVillage: () => string
 
   // Torneio CRUD
   criarTorneio: (t: Omit<Torneio, 'id' | 'criadoEm' | 'atualizadoEm' | 'jogadores' | 'duplas' | 'grupos' | 'jogos'>) => string
@@ -310,6 +312,11 @@ export const useTorneioStore = create<TorneioStore>()(
             ? { ...t, rodadas: t.rodadas.filter(r => r.id !== rodadaId), atualizadoEm: new Date().toISOString() }
             : t),
         }))
+      },
+      importarTemporadaVillage: () => {
+        const nova = criarTemporadaVillageSeed()
+        set(s => ({ temporadas: [...s.temporadas, nova] }))
+        return nova.id
       },
 
       criarTorneio: (data) => {
