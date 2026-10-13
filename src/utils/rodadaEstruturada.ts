@@ -64,24 +64,66 @@ export function calcularRankingFase(
   })
 }
 
-export function fasesFinalizadas(estr: RodadaEstruturada): { grupoA: boolean; grupoB: boolean; faseFinal: boolean } {
-  const jogosGA = estr.jogos.filter(j => j.fase === 'Grupo A')
-  const jogosGB = estr.jogos.filter(j => j.fase === 'Grupo B')
+/** Retorna a lista de grupos (nova estrutura) com fallback para rodadas antigas (grupoA/grupoB). */
+export function getGrupos(estr: RodadaEstruturada): string[][] {
+  if (estr.grupos && estr.grupos.length > 0) return estr.grupos
+  const legacy: string[][] = []
+  if (estr.grupoA) legacy.push(estr.grupoA)
+  if (estr.grupoB) legacy.push(estr.grupoB)
+  return legacy
+}
+
+export function nomeGrupo(i: number): string {
+  return `Grupo ${String.fromCharCode(65 + i)}` // A, B, C, D...
+}
+
+export interface FasesStatus {
+  grupos: boolean[]  // um bool por grupo
+  todosGrupos: boolean
+  faseFinal: boolean
+}
+
+export function fasesFinalizadas(estr: RodadaEstruturada): FasesStatus {
+  const grupos = getGrupos(estr)
+  const perGrupo = grupos.map((_, i) => {
+    const jogosG = estr.jogos.filter(j => j.fase === nomeGrupo(i))
+    return jogosG.length === 3 && jogosG.every(j => j.finalizado)
+  })
   const jogosFF = estr.jogos.filter(j => j.fase === 'Fase Final')
   return {
-    grupoA: jogosGA.length === 3 && jogosGA.every(j => j.finalizado),
-    grupoB: jogosGB.length === 3 && jogosGB.every(j => j.finalizado),
+    grupos: perGrupo,
+    todosGrupos: perGrupo.length > 0 && perGrupo.every(Boolean),
     faseFinal: jogosFF.length === 3 && jogosFF.every(j => j.finalizado),
   }
 }
 
-/** Após fase 1 completa, gera fase final (top 2 de cada grupo). */
+/**
+ * Após fase 1 completa, gera fase final de 4 jogadores:
+ * - 2 grupos → top 2 de cada = 4
+ * - 3 grupos → top 1 de cada + melhor 2º colocado (desempate: saldo, depois id)
+ */
 export function gerarFaseFinal(estr: RodadaEstruturada): RodadaEstruturada {
-  const topA = calcularRankingFase(estr.jogos, 'Grupo A', estr.grupoA).slice(0, 2).map(r => r.jogadorId)
-  const topB = calcularRankingFase(estr.jogos, 'Grupo B', estr.grupoB).slice(0, 2).map(r => r.jogadorId)
-  const faseFinalIds = [...topA, ...topB]
+  const grupos = getGrupos(estr)
+  let faseFinalIds: string[] = []
+
+  if (grupos.length === 2) {
+    for (let i = 0; i < 2; i++) {
+      const top = calcularRankingFase(estr.jogos, nomeGrupo(i), grupos[i]).slice(0, 2).map(r => r.jogadorId)
+      faseFinalIds.push(...top)
+    }
+  } else if (grupos.length === 3) {
+    const segundos: { jogadorId: string; vitorias: number; saldo: number }[] = []
+    for (let i = 0; i < 3; i++) {
+      const ranking = calcularRankingFase(estr.jogos, nomeGrupo(i), grupos[i])
+      if (ranking[0]) faseFinalIds.push(ranking[0].jogadorId)
+      if (ranking[1]) segundos.push(ranking[1])
+    }
+    // Melhor segundo colocado
+    segundos.sort((a, b) => (b.vitorias - a.vitorias) || (b.saldo - a.saldo) || a.jogadorId.localeCompare(b.jogadorId))
+    if (segundos[0]) faseFinalIds.push(segundos[0].jogadorId)
+  }
+
   if (faseFinalIds.length !== 4) return estr
-  // Se já tem jogos de fase final, não recria
   if (estr.jogos.some(j => j.fase === 'Fase Final')) return { ...estr, faseFinalIds }
   const novosJogos = gerarJogosGrupo4(faseFinalIds, 'Fase Final')
   return { ...estr, faseFinalIds, jogos: [...estr.jogos, ...novosJogos] }
@@ -95,7 +137,6 @@ export function calcularPontosRodada(
   const resultado: { jogadorId: string; pontos: number }[] = []
   const classificadosFinal = new Set(estr.faseFinalIds ?? [])
 
-  // Fase Final → 1000/750/500/400
   if (estr.faseFinalIds && estr.faseFinalIds.length === 4) {
     const rankingFF = calcularRankingFase(estr.jogos, 'Fase Final', estr.faseFinalIds)
     const pontosPorPos = [1000, 750, 500, 400]
@@ -104,16 +145,15 @@ export function calcularPontosRodada(
     })
   }
 
-  // Eliminados na fase 1 → 250 (c/vit) ou 150 (s/vit)
-  for (const [faseG, idsG] of [['Grupo A', estr.grupoA], ['Grupo B', estr.grupoB]] as const) {
-    const ranking = calcularRankingFase(estr.jogos, faseG, idsG)
+  const grupos = getGrupos(estr)
+  grupos.forEach((ids, i) => {
+    const ranking = calcularRankingFase(estr.jogos, nomeGrupo(i), ids)
     ranking.forEach(r => {
       if (classificadosFinal.has(r.jogadorId)) return
       resultado.push({ jogadorId: r.jogadorId, pontos: r.vitorias >= 1 ? 250 : 150 })
     })
-  }
+  })
 
-  // Preserva somente jogadores existentes
   const idsValidos = new Set(jogadores.map(j => j.id))
   return resultado.filter(r => idsValidos.has(r.jogadorId))
 }

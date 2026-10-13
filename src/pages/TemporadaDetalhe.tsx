@@ -132,7 +132,7 @@ export default function TemporadaDetalhe() {
               onClick={() => navigate(`/temporada/${temporada.id}/rodada/nova`)}
               disabled={temporada.jogadores.length < 8}
               className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
-              title={temporada.jogadores.length < 8 ? 'Precisa ter 8 jogadores na liga' : 'Jogar rodada completa no app'}
+              title={temporada.jogadores.length < 8 ? 'Precisa ter pelo menos 8 jogadores' : 'Jogar rodada completa no app (8 ou 12 jogadores)'}
             >
               <Play size={16} /> Jogar rodada no app
             </button>

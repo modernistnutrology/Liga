@@ -92,11 +92,15 @@ export interface JogoRodada {
 
 export interface RodadaEstruturada {
   liga: Liga
-  jogadoresIds: string[] // 8 jogadores
-  grupoA: string[]       // 4 jogadorIds
-  grupoB: string[]       // 4 jogadorIds
+  jogadoresIds: string[] // 8 ou 12 jogadores
+  /** 2 ou 3 grupos de 4 jogadores (nova estrutura) */
+  grupos?: string[][]
+  /** @deprecated usar grupos. Mantido para rodadas antigas. */
+  grupoA?: string[]
+  /** @deprecated usar grupos. Mantido para rodadas antigas. */
+  grupoB?: string[]
   jogos: JogoRodada[]
-  faseFinalIds?: string[] // 4 classificados (ordem: 1A, 2A, 1B, 2B → não importa)
+  faseFinalIds?: string[] // 4 classificados para Fase Final
   finalizada: boolean
 }
 

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
-import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, calcularPontosRodada } from '../utils/rodadaEstruturada'
+import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, calcularPontosRodada, getGrupos, nomeGrupo } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 
 export default function RodadaEstruturadaPage() {
@@ -73,30 +73,22 @@ export default function RodadaEstruturadaPage() {
 
         <StepBar fases={fases} finalizada={estr.finalizada} />
 
-        {/* Grupo A */}
-        <FaseCard
-          titulo="Grupo A"
-          jogos={estr.jogos.filter(j => j.fase === 'Grupo A')}
-          jogadorIds={estr.grupoA}
-          nome={nome}
-          onPlacar={updateJogo}
-          ranking={calcularRankingFase(estr.jogos, 'Grupo A', estr.grupoA)}
-          classificados={2}
-        />
-
-        {/* Grupo B */}
-        <FaseCard
-          titulo="Grupo B"
-          jogos={estr.jogos.filter(j => j.fase === 'Grupo B')}
-          jogadorIds={estr.grupoB}
-          nome={nome}
-          onPlacar={updateJogo}
-          ranking={calcularRankingFase(estr.jogos, 'Grupo B', estr.grupoB)}
-          classificados={2}
-        />
+        {/* Grupos (2 ou 3) */}
+        {getGrupos(estr).map((ids, i) => (
+          <FaseCard
+            key={i}
+            titulo={nomeGrupo(i)}
+            jogos={estr.jogos.filter(j => j.fase === nomeGrupo(i))}
+            jogadorIds={ids}
+            nome={nome}
+            onPlacar={updateJogo}
+            ranking={calcularRankingFase(estr.jogos, nomeGrupo(i), ids)}
+            classificados={getGrupos(estr).length === 2 ? 2 : 1}
+          />
+        ))}
 
         {/* Fase Final */}
-        {fases.grupoA && fases.grupoB && !estr.faseFinalIds && (
+        {fases.todosGrupos && !estr.faseFinalIds && (
           <div className="card p-6 text-center">
             <p className="text-teal-200 mb-3">Fase 1 completa! Gerar Fase Final com os 4 classificados.</p>
             <button onClick={avancarFaseFinal} className="btn-primary flex items-center gap-2 mx-auto">
@@ -132,17 +124,16 @@ export default function RodadaEstruturadaPage() {
   )
 }
 
-function StepBar({ fases, finalizada }: { fases: { grupoA: boolean; grupoB: boolean; faseFinal: boolean }; finalizada: boolean }) {
+function StepBar({ fases, finalizada }: { fases: { grupos: boolean[]; todosGrupos: boolean; faseFinal: boolean }; finalizada: boolean }) {
   const steps = [
-    { label: 'Grupo A', ok: fases.grupoA },
-    { label: 'Grupo B', ok: fases.grupoB },
+    ...fases.grupos.map((ok, i) => ({ label: nomeGrupo(i), ok })),
     { label: 'Fase Final', ok: fases.faseFinal },
     { label: 'Pontos', ok: finalizada },
   ]
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 flex-wrap">
       {steps.map((s, i) => (
-        <div key={i} className={`flex-1 rounded-lg px-3 py-2 text-xs text-center border ${s.ok ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-teal-900/40 border-teal-800 text-teal-400'}`}>
+        <div key={i} className={`flex-1 min-w-[80px] rounded-lg px-3 py-2 text-xs text-center border ${s.ok ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300' : 'bg-teal-900/40 border-teal-800 text-teal-400'}`}>
           {s.ok && <CheckCircle2 size={12} className="inline mr-1" />} {s.label}
         </div>
       ))}
@@ -301,6 +292,7 @@ function SetupNovaRodada({
   const navigate = useNavigate()
   void navigate
   const [liga, setLiga] = useState<Liga>('A')
+  const [tamanho, setTamanho] = useState<8 | 12>(8)
   const [selecionados, setSelecionados] = useState<string[]>([])
   const [nome, setNome] = useState('')
 
@@ -309,25 +301,32 @@ function SetupNovaRodada({
   function toggle(id: string) {
     setSelecionados(prev => prev.includes(id)
       ? prev.filter(x => x !== id)
-      : prev.length >= 8 ? prev : [...prev, id])
+      : prev.length >= tamanho ? prev : [...prev, id])
+  }
+
+  function trocarTamanho(novo: 8 | 12) {
+    setTamanho(novo)
+    setSelecionados(prev => prev.slice(0, novo))
   }
 
   function sortearECriar() {
-    if (selecionados.length !== 8) {
-      showToast('Selecione exatamente 8 jogadores', 'error')
+    if (selecionados.length !== tamanho) {
+      showToast(`Selecione exatamente ${tamanho} jogadores`, 'error')
       return
     }
     const shuffled = shuffle(selecionados)
-    const grupoA = shuffled.slice(0, 4)
-    const grupoB = shuffled.slice(4, 8)
-    const jogos = [
-      ...gerarJogosGrupo4(grupoA, 'Grupo A'),
-      ...gerarJogosGrupo4(grupoB, 'Grupo B'),
-    ]
+    const nGrupos = tamanho === 8 ? 2 : 3
+    const grupos: string[][] = []
+    for (let i = 0; i < nGrupos; i++) {
+      grupos.push(shuffled.slice(i * 4, (i + 1) * 4))
+    }
+    const jogos = grupos.flatMap((ids, i) =>
+      gerarJogosGrupo4(ids, `Grupo ${String.fromCharCode(65 + i)}`)
+    )
     const estr: RodadaEstr = {
       liga,
       jogadoresIds: selecionados,
-      grupoA, grupoB,
+      grupos,
       jogos,
       finalizada: false,
     }
@@ -345,12 +344,19 @@ function SetupNovaRodada({
         </div>
 
         <div className="card p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="text-xs text-teal-300 uppercase tracking-wider">Liga</label>
-              <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden mt-1">
-                <button onClick={() => { setLiga('A'); setSelecionados([]) }} className={`px-4 py-2 text-sm ${liga === 'A' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga A</button>
-                <button onClick={() => { setLiga('B'); setSelecionados([]) }} className={`px-4 py-2 text-sm ${liga === 'B' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga B</button>
+              <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden mt-1 w-full">
+                <button onClick={() => { setLiga('A'); setSelecionados([]) }} className={`flex-1 px-4 py-2 text-sm ${liga === 'A' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga A</button>
+                <button onClick={() => { setLiga('B'); setSelecionados([]) }} className={`flex-1 px-4 py-2 text-sm ${liga === 'B' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga B</button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-teal-300 uppercase tracking-wider">Formato</label>
+              <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden mt-1 w-full">
+                <button onClick={() => trocarTamanho(8)} className={`flex-1 px-3 py-2 text-sm ${tamanho === 8 ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>8 (2 grupos)</button>
+                <button onClick={() => trocarTamanho(12)} className={`flex-1 px-3 py-2 text-sm ${tamanho === 12 ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>12 (3 grupos)</button>
               </div>
             </div>
             <div>
@@ -361,12 +367,12 @@ function SetupNovaRodada({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm text-teal-200 font-semibold">Selecione 8 jogadores da Liga {liga}</h3>
-              <span className={`text-xs ${selecionados.length === 8 ? 'text-emerald-400' : 'text-teal-400'}`}>
-                {selecionados.length}/8
+              <h3 className="text-sm text-teal-200 font-semibold">Selecione {tamanho} jogadores da Liga {liga}</h3>
+              <span className={`text-xs ${selecionados.length === tamanho ? 'text-emerald-400' : 'text-teal-400'}`}>
+                {selecionados.length}/{tamanho}
               </span>
             </div>
-            {candidatos.length < 8 && (
+            {candidatos.length < tamanho && (
               <p className="text-xs text-red-400 mb-2">Liga {liga} tem apenas {candidatos.length} jogador(es). Cadastre mais na Temporada.</p>
             )}
             <div className="grid grid-cols-2 gap-2 max-h-[50vh] overflow-y-auto">
