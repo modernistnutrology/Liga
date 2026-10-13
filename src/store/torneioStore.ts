@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Torneio, Jogador, Dupla, Jogo, Grupo, Temporada, JogadorTemporada, RodadaTemporada, Liga } from '../types'
+import type { Torneio, Jogador, Dupla, Jogo, Grupo, Temporada, JogadorTemporada, RodadaTemporada, RodadaEstruturada, Liga } from '../types'
 import { nanoid } from '../utils/nanoid'
 import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
@@ -208,6 +208,9 @@ interface TorneioStore {
   editarRodadaTemporada: (temporadaId: string, rodadaId: string, data: Partial<RodadaTemporada>) => void
   removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
   importarTemporadaVillage: () => string
+  criarRodadaEstruturada: (temporadaId: string, estr: RodadaEstruturada, nome?: string) => string | null
+  atualizarRodadaEstruturada: (temporadaId: string, rodadaId: string, estr: RodadaEstruturada) => void
+  finalizarRodadaEstruturada: (temporadaId: string, rodadaId: string, pontos: { jogadorId: string; pontos: number }[]) => void
 
   // Torneio CRUD
   criarTorneio: (t: Omit<Torneio, 'id' | 'criadoEm' | 'atualizadoEm' | 'jogadores' | 'duplas' | 'grupos' | 'jogos'>) => string
@@ -317,6 +320,49 @@ export const useTorneioStore = create<TorneioStore>()(
         const nova = criarTemporadaVillageSeed()
         set(s => ({ temporadas: [...s.temporadas, nova] }))
         return nova.id
+      },
+      criarRodadaEstruturada: (temporadaId, estr, nome) => {
+        const t = get().temporadas.find(x => x.id === temporadaId)
+        if (!t) return null
+        const numero = t.rodadas.reduce((m, r) => Math.max(m, r.numero), 0) + 1
+        const nova: RodadaTemporada = {
+          id: nanoid(),
+          numero,
+          data: new Date().toISOString(),
+          nome,
+          pontos: [],
+          estruturada: estr,
+        }
+        set(s => ({
+          temporadas: s.temporadas.map(x => x.id === temporadaId
+            ? { ...x, rodadas: [...x.rodadas, nova], atualizadoEm: new Date().toISOString() }
+            : x),
+        }))
+        return nova.id
+      },
+      atualizarRodadaEstruturada: (temporadaId, rodadaId, estr) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? { ...t, rodadas: t.rodadas.map(r => r.id === rodadaId ? { ...r, estruturada: estr } : r), atualizadoEm: new Date().toISOString() }
+            : t),
+        }))
+      },
+      finalizarRodadaEstruturada: (temporadaId, rodadaId, pontos) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? {
+                ...t,
+                rodadas: t.rodadas.map(r => r.id === rodadaId
+                  ? {
+                      ...r,
+                      pontos,
+                      estruturada: r.estruturada ? { ...r.estruturada, finalizada: true } : r.estruturada,
+                    }
+                  : r),
+                atualizadoEm: new Date().toISOString(),
+              }
+            : t),
+        }))
       },
 
       criarTorneio: (data) => {

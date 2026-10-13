@@ -79,6 +79,27 @@ export interface JogadorTemporada {
   criadoEm: string
 }
 
+export interface JogoRodada {
+  id: string
+  fase: string // nome do grupo ou 'Fase Final'
+  rodadaRotacao: number // 1, 2, 3
+  dupla: [string, string]       // jogadorIds
+  dupla2: [string, string]      // jogadorIds
+  placar1?: number
+  placar2?: number
+  finalizado: boolean
+}
+
+export interface RodadaEstruturada {
+  liga: Liga
+  jogadoresIds: string[] // 8 jogadores
+  grupoA: string[]       // 4 jogadorIds
+  grupoB: string[]       // 4 jogadorIds
+  jogos: JogoRodada[]
+  faseFinalIds?: string[] // 4 classificados (ordem: 1A, 2A, 1B, 2B → não importa)
+  finalizada: boolean
+}
+
 export interface RodadaTemporada {
   id: string
   numero: number
@@ -86,6 +107,8 @@ export interface RodadaTemporada {
   nome?: string
   /** Pontuação da rodada por jogador */
   pontos: { jogadorId: string; pontos: number }[]
+  /** Opcional: se true, foi criada/jogada no app (não manual) */
+  estruturada?: RodadaEstruturada
 }
 
 export interface Temporada {

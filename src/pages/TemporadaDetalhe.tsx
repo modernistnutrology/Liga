@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Users, Trophy, Award, CalendarPlus, X, Pencil, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Users, Trophy, Award, CalendarPlus, X, Pencil, ExternalLink, Play, Edit3 } from 'lucide-react'
 
 const PLANILHA_URL = 'https://docs.google.com/spreadsheets/d/1AxSTiaNCDWi56xjnG-e3x36pBGhThVbzzbi4EYk2o2o/edit'
 import { useTorneioStore } from '../store/torneioStore'
@@ -127,14 +127,24 @@ export default function TemporadaDetalhe() {
             <Btn ativo={filtro === 'A'} onClick={() => setFiltro('A')}>Liga A</Btn>
             <Btn ativo={filtro === 'B'} onClick={() => setFiltro('B')}>Liga B</Btn>
           </div>
-          <button
-            onClick={() => setModalRodada(true)}
-            disabled={temporada.jogadores.length === 0}
-            className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
-            title={temporada.jogadores.length === 0 ? 'Cadastre jogadores primeiro' : 'Lançar pontos de uma rodada'}
-          >
-            <CalendarPlus size={16} /> Nova rodada
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => navigate(`/temporada/${temporada.id}/rodada/nova`)}
+              disabled={temporada.jogadores.length < 8}
+              className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50"
+              title={temporada.jogadores.length < 8 ? 'Precisa ter 8 jogadores na liga' : 'Jogar rodada completa no app'}
+            >
+              <Play size={16} /> Jogar rodada no app
+            </button>
+            <button
+              onClick={() => setModalRodada(true)}
+              disabled={temporada.jogadores.length === 0}
+              className="btn-secondary text-sm flex items-center gap-2 disabled:opacity-50"
+              title="Lançar só os pontos manualmente"
+            >
+              <Edit3 size={16} /> Lançar pontos manual
+            </button>
+          </div>
         </div>
 
         {/* Ranking */}
@@ -230,15 +240,29 @@ export default function TemporadaDetalhe() {
             <div className="divide-y divide-teal-800/50">
               {[...temporada.rodadas].sort((a, b) => b.numero - a.numero).map(r => (
                 <details key={r.id} className="group">
-                  <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-teal-50">
+                  <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-teal-50 flex items-center gap-2 flex-wrap">
                         Rodada {r.numero} {r.nome ? <span className="text-teal-300 font-normal">— {r.nome}</span> : null}
+                        {r.estruturada && (
+                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${r.estruturada.finalizada ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-yellow-400/15 text-yellow-300 border border-yellow-400/30'}`}>
+                            {r.estruturada.finalizada ? 'Jogada no app' : 'Em andamento'}
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-teal-400 mt-0.5">
                         {new Date(r.data).toLocaleDateString('pt-BR')} · {r.pontos.filter(p => p.pontos > 0).length} jogadores pontuaram
                       </div>
                     </div>
+                    {r.estruturada && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); navigate(`/temporada/${temporada.id}/rodada/${r.id}`) }}
+                        className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+                        title="Abrir / editar jogos"
+                      >
+                        <Play size={12} /> Abrir
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.preventDefault()

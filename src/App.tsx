@@ -14,6 +14,7 @@ import Classificacao from './pages/Classificacao'
 import RankingTemporada from './pages/RankingTemporada'
 import TemporadasHome from './pages/TemporadasHome'
 import TemporadaDetalhe from './pages/TemporadaDetalhe'
+import RodadaEstruturadaPage from './pages/RodadaEstruturada'
 import { ToastContainer } from './components/ui/Toast'
 
 function DarkModeSync() {
@@ -35,6 +36,8 @@ export default function App() {
         <Route path="/ranking-temporada" element={<RankingTemporada />} />
         <Route path="/temporadas" element={<TemporadasHome />} />
         <Route path="/temporada/:id" element={<TemporadaDetalhe />} />
+        <Route path="/temporada/:id/rodada/nova" element={<RodadaEstruturadaPage />} />
+        <Route path="/temporada/:id/rodada/:rid" element={<RodadaEstruturadaPage />} />
         <Route path="/torneio/:id" element={<Layout />}>
           <Route index element={<PainelTorneio />} />
           <Route path="participantes" element={<Participantes />} />
