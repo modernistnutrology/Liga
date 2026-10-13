@@ -125,6 +125,14 @@ export default function Home() {
               Demo
             </button>
           )}
+          <button
+            onClick={() => navigate('/ranking-temporada')}
+            className="btn-secondary flex items-center gap-2 text-sm border-yellow-400/40 text-yellow-300 hover:bg-yellow-400/10"
+            title="Classificação geral da Liga (Google Sheets)"
+          >
+            <Trophy size={16} />
+            Ranking Temporada
+          </button>
           <button onClick={() => navigate('/novo-torneio')} className="btn-primary flex items-center gap-2">
             <Plus size={18} />
             Novo torneio
