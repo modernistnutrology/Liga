@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Torneio, Jogador, Dupla, Jogo, Grupo } from '../types'
+import type { Torneio, Jogador, Dupla, Jogo, Grupo, Temporada, JogadorTemporada, RodadaTemporada, Liga } from '../types'
 import { nanoid } from '../utils/nanoid'
 import { avançarVencedor, gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
@@ -193,7 +193,19 @@ function maybeGerarMataMata(torneio: Torneio, jogos: Jogo[]): Jogo[] {
 
 interface TorneioStore {
   torneios: Torneio[]
+  temporadas: Temporada[]
   darkMode: boolean
+
+  // Temporada CRUD
+  criarTemporada: (nome: string) => string
+  renomearTemporada: (id: string, nome: string) => void
+  excluirTemporada: (id: string) => void
+  adicionarJogadorTemporada: (temporadaId: string, nome: string, liga: Liga) => void
+  editarJogadorTemporada: (temporadaId: string, jogadorId: string, data: Partial<JogadorTemporada>) => void
+  removerJogadorTemporada: (temporadaId: string, jogadorId: string) => void
+  adicionarRodadaTemporada: (temporadaId: string, rodada: Omit<RodadaTemporada, 'id' | 'numero'>) => void
+  editarRodadaTemporada: (temporadaId: string, rodadaId: string, data: Partial<RodadaTemporada>) => void
+  removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
 
   // Torneio CRUD
   criarTorneio: (t: Omit<Torneio, 'id' | 'criadoEm' | 'atualizadoEm' | 'jogadores' | 'duplas' | 'grupos' | 'jogos'>) => string
@@ -232,7 +244,73 @@ export const useTorneioStore = create<TorneioStore>()(
   persist(
     (set, get) => ({
       torneios: [],
+      temporadas: [],
       darkMode: true,
+
+      criarTemporada: (nome) => {
+        const id = nanoid()
+        const now = new Date().toISOString()
+        const temporada: Temporada = { id, nome, jogadores: [], rodadas: [], criadoEm: now, atualizadoEm: now }
+        set(s => ({ temporadas: [...s.temporadas, temporada] }))
+        return id
+      },
+      renomearTemporada: (id, nome) => {
+        set(s => ({ temporadas: s.temporadas.map(t => t.id === id ? { ...t, nome, atualizadoEm: new Date().toISOString() } : t) }))
+      },
+      excluirTemporada: (id) => {
+        set(s => ({ temporadas: s.temporadas.filter(t => t.id !== id) }))
+      },
+      adicionarJogadorTemporada: (temporadaId, nome, liga) => {
+        const j: JogadorTemporada = { id: nanoid(), nome: nome.trim(), liga, criadoEm: new Date().toISOString() }
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? { ...t, jogadores: [...t.jogadores, j], atualizadoEm: new Date().toISOString() }
+            : t),
+        }))
+      },
+      editarJogadorTemporada: (temporadaId, jogadorId, data) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? { ...t, jogadores: t.jogadores.map(j => j.id === jogadorId ? { ...j, ...data } : j), atualizadoEm: new Date().toISOString() }
+            : t),
+        }))
+      },
+      removerJogadorTemporada: (temporadaId, jogadorId) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? {
+                ...t,
+                jogadores: t.jogadores.filter(j => j.id !== jogadorId),
+                rodadas: t.rodadas.map(r => ({ ...r, pontos: r.pontos.filter(p => p.jogadorId !== jogadorId) })),
+                atualizadoEm: new Date().toISOString(),
+              }
+            : t),
+        }))
+      },
+      adicionarRodadaTemporada: (temporadaId, rodada) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => {
+            if (t.id !== temporadaId) return t
+            const numero = (t.rodadas.reduce((m, r) => Math.max(m, r.numero), 0)) + 1
+            const nova: RodadaTemporada = { ...rodada, id: nanoid(), numero }
+            return { ...t, rodadas: [...t.rodadas, nova], atualizadoEm: new Date().toISOString() }
+          }),
+        }))
+      },
+      editarRodadaTemporada: (temporadaId, rodadaId, data) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? { ...t, rodadas: t.rodadas.map(r => r.id === rodadaId ? { ...r, ...data } : r), atualizadoEm: new Date().toISOString() }
+            : t),
+        }))
+      },
+      removerRodadaTemporada: (temporadaId, rodadaId) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id === temporadaId
+            ? { ...t, rodadas: t.rodadas.filter(r => r.id !== rodadaId), atualizadoEm: new Date().toISOString() }
+            : t),
+        }))
+      },
 
       criarTorneio: (data) => {
         const id = nanoid()

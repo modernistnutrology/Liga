@@ -67,6 +67,34 @@ export interface EtapaHistorico {
   }[]
 }
 
+/** Temporada da Liga Village — Liga A/B com ranking acumulado por rodadas. */
+export type Liga = 'A' | 'B'
+
+export interface JogadorTemporada {
+  id: string
+  nome: string
+  liga: Liga
+  criadoEm: string
+}
+
+export interface RodadaTemporada {
+  id: string
+  numero: number
+  data: string
+  nome?: string
+  /** Pontuação da rodada por jogador */
+  pontos: { jogadorId: string; pontos: number }[]
+}
+
+export interface Temporada {
+  id: string
+  nome: string
+  jogadores: JogadorTemporada[]
+  rodadas: RodadaTemporada[]
+  criadoEm: string
+  atualizadoEm: string
+}
+
 export interface Torneio {
   id: string
   nome: string

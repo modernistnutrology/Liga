@@ -126,12 +126,20 @@ export default function Home() {
             </button>
           )}
           <button
-            onClick={() => navigate('/ranking-temporada')}
+            onClick={() => navigate('/temporadas')}
             className="btn-secondary flex items-center gap-2 text-sm border-yellow-400/40 text-yellow-300 hover:bg-yellow-400/10"
-            title="Classificação geral da Liga (Google Sheets)"
+            title="Temporadas e ranking geral (app nativo)"
           >
             <Trophy size={16} />
-            Ranking Temporada
+            Temporadas
+          </button>
+          <button
+            onClick={() => navigate('/ranking-temporada')}
+            className="btn-ghost flex items-center gap-2 text-sm border border-teal-800 text-teal-300 hover:border-yellow-400/40 rounded-lg"
+            title="Classificação espelhada da planilha oficial"
+          >
+            <Trophy size={14} />
+            <span className="hidden sm:inline">Planilha</span>
           </button>
           <button onClick={() => navigate('/novo-torneio')} className="btn-primary flex items-center gap-2">
             <Plus size={18} />

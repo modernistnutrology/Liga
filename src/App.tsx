@@ -12,6 +12,8 @@ import Chaveamento from './pages/Chaveamento'
 import Resultados from './pages/Resultados'
 import Classificacao from './pages/Classificacao'
 import RankingTemporada from './pages/RankingTemporada'
+import TemporadasHome from './pages/TemporadasHome'
+import TemporadaDetalhe from './pages/TemporadaDetalhe'
 import { ToastContainer } from './components/ui/Toast'
 
 function DarkModeSync() {
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="/" element={<HomeWrapper />} />
         <Route path="/novo-torneio" element={<NovoTorneioWrapper />} />
         <Route path="/ranking-temporada" element={<RankingTemporada />} />
+        <Route path="/temporadas" element={<TemporadasHome />} />
+        <Route path="/temporada/:id" element={<TemporadaDetalhe />} />
         <Route path="/torneio/:id" element={<Layout />}>
           <Route index element={<PainelTorneio />} />
           <Route path="participantes" element={<Participantes />} />
