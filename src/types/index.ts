@@ -113,11 +113,15 @@ export interface RodadaTemporada {
   pontos: { jogadorId: string; pontos: number }[]
   /** Opcional: se true, foi criada/jogada no app (não manual) */
   estruturada?: RodadaEstruturada
+  /** Bloco de totais importado da planilha; representa as rodadas anteriores ao app. */
+  importada?: boolean
 }
 
 export interface Temporada {
   id: string
   nome: string
+  /** Rodadas já disputadas antes de começar a usar o app (contidas na rodada importada). */
+  rodadasAnteriores?: number
   jogadores: JogadorTemporada[]
   rodadas: RodadaTemporada[]
   criadoEm: string

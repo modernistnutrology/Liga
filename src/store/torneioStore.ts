@@ -8,6 +8,7 @@ import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
 import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
 import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
+import { normalizarTemporada, proximoNumeroRodada } from '../utils/temporada'
 
 /**
  * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
@@ -297,8 +298,7 @@ export const useTorneioStore = create<TorneioStore>()(
         set(s => ({
           temporadas: s.temporadas.map(t => {
             if (t.id !== temporadaId) return t
-            const numero = (t.rodadas.reduce((m, r) => Math.max(m, r.numero), 0)) + 1
-            const nova: RodadaTemporada = { ...rodada, id: nanoid(), numero }
+            const nova: RodadaTemporada = { ...rodada, id: nanoid(), numero: proximoNumeroRodada(t) }
             return { ...t, rodadas: [...t.rodadas, nova], atualizadoEm: new Date().toISOString() }
           }),
         }))
@@ -322,7 +322,8 @@ export const useTorneioStore = create<TorneioStore>()(
         set(s => ({ temporadas: [...s.temporadas, nova] }))
         return nova.id
       },
-      importarDados: (dados, modo) => {
+      importarDados: (dadosBrutos, modo) => {
+        const dados = { ...dadosBrutos, temporadas: dadosBrutos.temporadas.map(normalizarTemporada) }
         if (modo === 'substituir') {
           set({ torneios: dados.torneios, temporadas: dados.temporadas })
           return
@@ -339,10 +340,9 @@ export const useTorneioStore = create<TorneioStore>()(
       criarRodadaEstruturada: (temporadaId, estr, nome) => {
         const t = get().temporadas.find(x => x.id === temporadaId)
         if (!t) return null
-        const numero = t.rodadas.reduce((m, r) => Math.max(m, r.numero), 0) + 1
         const nova: RodadaTemporada = {
           id: nanoid(),
-          numero,
+          numero: proximoNumeroRodada(t),
           data: new Date().toISOString(),
           nome,
           pontos: [],
@@ -578,6 +578,13 @@ export const useTorneioStore = create<TorneioStore>()(
         set(s => ({ torneios: [...s.torneios, t] }))
       },
     }),
-    { name: 'torneios-storage' }
+    {
+      name: 'torneios-storage',
+      version: 1,
+      migrate: (persisted: any) => ({
+        ...persisted,
+        temporadas: (persisted?.temporadas ?? []).map(normalizarTemporada),
+      }),
+    }
   )
 )

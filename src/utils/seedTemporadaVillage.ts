@@ -57,10 +57,12 @@ export function criarTemporadaVillageSeed(): Temporada {
     data: now,
     nome: 'Totais acumulados (importado da planilha)',
     pontos: jogadores.map((j, i) => ({ jogadorId: j.id, pontos: DADOS[i].pontos })),
+    importada: true,
   }
   return {
     id: nanoid(),
     nome: 'Temporada Village — atual',
+    rodadasAnteriores: 4,
     jogadores,
     rodadas: [rodadaImportada],
     criadoEm: now,

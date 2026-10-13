@@ -6,6 +6,7 @@ const PLANILHA_URL = 'https://docs.google.com/spreadsheets/d/1AxSTiaNCDWi56xjnG-
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
+import { totalRodadas, rotuloRodada } from '../utils/temporada'
 import { showToast } from '../components/ui/Toast'
 
 type Filtro = 'todas' | 'A' | 'B'
@@ -46,11 +47,16 @@ export default function TemporadaDetalhe() {
     const base = temporada.jogadores.map(j => {
       let pontos = 0
       let rodadasContadas = 0
+      let jogouImportada = false
       for (const r of temporada.rodadas) {
         const p = r.pontos.find(x => x.jogadorId === j.id)
-        if (p && p.pontos > 0) { pontos += p.pontos; rodadasContadas++ }
+        if (!p || p.pontos <= 0) continue
+        pontos += p.pontos
+        if (r.importada) jogouImportada = true
+        else rodadasContadas++
       }
-      const rodadasJogadas = j.rodadasJogadasOverride ?? rodadasContadas
+      const rodadasDaPlanilha = j.rodadasJogadasOverride ?? (jogouImportada ? 1 : 0)
+      const rodadasJogadas = rodadasDaPlanilha + rodadasContadas
       return { jogador: j, pontos, rodadasJogadas }
     })
     const filt = filtro === 'todas' ? base : base.filter(l => l.jogador.liga === filtro)
@@ -118,7 +124,7 @@ export default function TemporadaDetalhe() {
         {/* Estatísticas */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard label="Jogadores" valor={temporada.jogadores.length} />
-          <StatCard label="Rodadas" valor={temporada.rodadas.length} />
+          <StatCard label="Rodadas" valor={totalRodadas(temporada)} />
           <StatCard label="Liga A / B" valor={`${temporada.jogadores.filter(j => j.liga === 'A').length} / ${temporada.jogadores.filter(j => j.liga === 'B').length}`} />
         </div>
 
@@ -245,7 +251,7 @@ export default function TemporadaDetalhe() {
                   <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-teal-50 flex items-center gap-2 flex-wrap">
-                        Rodada {r.numero} {r.nome ? <span className="text-teal-300 font-normal">— {r.nome}</span> : null}
+                        {rotuloRodada(temporada, r)} {r.nome ? <span className="text-teal-300 font-normal">— {r.nome}</span> : null}
                         {r.estruturada && (
                           <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${r.estruturada.finalizada ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-yellow-400/15 text-yellow-300 border border-yellow-400/30'}`}>
                             {r.estruturada.finalizada ? 'Jogada no app' : 'Em andamento'}

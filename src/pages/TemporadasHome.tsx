@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trophy, Trash2, ChevronRight, Users, Calendar, Externa
 import { useTorneioStore } from '../store/torneioStore'
 import { showToast } from '../components/ui/Toast'
 import BackupCard from '../components/BackupCard'
+import { totalRodadas } from '../utils/temporada'
 
 export default function TemporadasHome() {
   const navigate = useNavigate()
@@ -95,7 +96,7 @@ export default function TemporadasHome() {
                   </div>
                   <div className="flex gap-4 mt-3 text-xs text-teal-300">
                     <span className="flex items-center gap-1.5"><Users size={12} className="text-teal-500" />{t.jogadores.length} jogadores</span>
-                    <span className="flex items-center gap-1.5"><Calendar size={12} className="text-teal-500" />{t.rodadas.length} rodadas</span>
+                    <span className="flex items-center gap-1.5"><Calendar size={12} className="text-teal-500" />{totalRodadas(t)} rodadas</span>
                     <span className="text-yellow-300 font-semibold">{totalPontos.toLocaleString('pt-BR')} pts</span>
                   </div>
                   <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
