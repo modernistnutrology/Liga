@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Users, Trophy, Award, CalendarPlus, X, Pencil } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Users, Trophy, Award, CalendarPlus, X, Pencil, ExternalLink } from 'lucide-react'
+
+const PLANILHA_URL = 'https://docs.google.com/spreadsheets/d/1AxSTiaNCDWi56xjnG-e3x36pBGhThVbzzbi4EYk2o2o/edit'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
@@ -99,6 +101,16 @@ export default function TemporadaDetalhe() {
               </h1>
             )}
           </div>
+          <a
+            href={PLANILHA_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="btn-ghost text-sm flex items-center gap-2 border border-teal-800 hover:border-yellow-400/40 rounded-lg px-3 py-2"
+            title="Abrir planilha oficial da Liga Village"
+          >
+            <ExternalLink size={14} className="text-yellow-300" />
+            <span className="hidden sm:inline text-teal-200">Planilha</span>
+          </a>
         </div>
 
         {/* Estatísticas */}
