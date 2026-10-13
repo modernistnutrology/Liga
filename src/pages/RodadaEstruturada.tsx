@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award } from 'lucide-react'
+import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
 import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado } from '../utils/rodadaEstruturada'
@@ -55,9 +55,8 @@ export default function RodadaEstruturadaPage() {
     showToast('Final e disputa de 3º geradas!', 'success')
   }
 
-  function finalizar() {
+  function finalizar(pontos: { jogadorId: string; pontos: number }[]) {
     if (!estr) return
-    const pontos = calcularPontosRodada(estr, temporada!.jogadores)
     finalizarRodadaEstruturada(temporada!.id, rodada!.id, pontos)
     showToast('Pontos lançados no ranking!', 'success')
     navigate(`/temporada/${temporada!.id}`)
@@ -370,32 +369,87 @@ function ResumoFinal({
   estr: RodadaEstr
   jogadores: JogadorTemporada[]
   finalizada: boolean
-  onFinalizar: () => void
+  onFinalizar: (pontos: { jogadorId: string; pontos: number }[]) => void
 }) {
-  const pontos = calcularPontosRodada(estr, jogadores)
+  const calculados = calcularPontosRodada(estr, jogadores)
   const porNome = (id: string) => jogadores.find(j => j.id === id)?.nome ?? '?'
-  const ordenado = [...pontos].sort((a, b) => b.pontos - a.pontos)
+  const [editado, setEditado] = useState<Record<string, string>>(() =>
+    Object.fromEntries(calculados.map(p => [p.jogadorId, String(p.pontos)]))
+  )
+  const [editando, setEditando] = useState(false)
+
+  function resetar() {
+    setEditado(Object.fromEntries(calculados.map(p => [p.jogadorId, String(p.pontos)])))
+  }
+  function salvar() {
+    const pontos = calculados.map(p => ({
+      jogadorId: p.jogadorId,
+      pontos: Number((editado[p.jogadorId] ?? '').toString().replace(',', '.')) || 0,
+    }))
+    onFinalizar(pontos)
+  }
+
+  const ordenado = [...calculados].sort((a, b) => b.pontos - a.pontos)
+  const totalCalculado = calculados.reduce((s, p) => s + p.pontos, 0)
+  const totalAtual = Object.values(editado).reduce((s, v) => s + (Number(v) || 0), 0)
+
   return (
     <div className="card overflow-hidden ring-2 ring-yellow-400/30">
-      <div className="p-4 border-b border-teal-800 flex items-center gap-2">
-        <Trophy className="text-yellow-300" size={20} />
-        <h2 className="font-display text-xl text-yellow-300 tracking-wide">PONTUAÇÃO DA RODADA</h2>
+      <div className="p-4 border-b border-teal-800 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Trophy className="text-yellow-300" size={20} />
+          <h2 className="font-display text-xl text-yellow-300 tracking-wide">PONTUAÇÃO DA RODADA</h2>
+        </div>
+        {!finalizada && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setEditando(e => !e)}
+              className="btn-secondary text-xs flex items-center gap-1.5"
+            >
+              <Pencil size={12} /> {editando ? 'Fechar edição' : 'Editar pontos'}
+            </button>
+            {editando && (
+              <button onClick={resetar} className="btn-ghost text-xs border border-teal-800 rounded-lg px-2 py-1.5">
+                Resetar
+              </button>
+            )}
+          </div>
+        )}
       </div>
       <table className="w-full text-sm">
         <tbody>
           {ordenado.map(p => (
             <tr key={p.jogadorId} className="border-b border-teal-800/40">
               <td className="px-4 py-2.5 text-teal-50">{porNome(p.jogadorId)}</td>
-              <td className="px-4 py-2.5 text-right font-bold text-yellow-300 text-lg">{p.pontos}</td>
+              <td className="px-4 py-2 text-right">
+                {editando && !finalizada ? (
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    className="input w-24 text-right font-bold text-yellow-300"
+                    value={editado[p.jogadorId] ?? ''}
+                    onChange={e => setEditado(prev => ({ ...prev, [p.jogadorId]: e.target.value }))}
+                  />
+                ) : (
+                  <span className="font-bold text-yellow-300 text-lg">
+                    {Number(editado[p.jogadorId] ?? p.pontos)}
+                  </span>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {editando && !finalizada && totalAtual !== totalCalculado && (
+        <div className="px-4 py-2 bg-yellow-400/10 border-t border-yellow-400/20 text-xs text-yellow-200">
+          Total manual: {totalAtual} · Total calculado: {totalCalculado} ({totalAtual - totalCalculado > 0 ? '+' : ''}{totalAtual - totalCalculado})
+        </div>
+      )}
       <div className="p-4 flex justify-end">
         {finalizada ? (
           <span className="text-emerald-400 text-sm flex items-center gap-2"><CheckCircle2 size={16} /> Pontos já lançados no ranking</span>
         ) : (
-          <button onClick={onFinalizar} className="btn-primary flex items-center gap-2">
+          <button onClick={salvar} className="btn-primary flex items-center gap-2">
             <Save size={16} /> Lançar pontos no ranking
           </button>
         )}

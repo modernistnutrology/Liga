@@ -19,6 +19,7 @@ export default function TemporadaDetalhe() {
     editarJogadorTemporada,
     removerJogadorTemporada,
     adicionarRodadaTemporada,
+    editarRodadaTemporada,
     removerRodadaTemporada,
     renomearTemporada,
   } = useTorneioStore()
@@ -30,6 +31,7 @@ export default function TemporadaDetalhe() {
   const [modalRodada, setModalRodada] = useState(false)
   const [editandoNome, setEditandoNome] = useState(false)
   const [nomeTmp, setNomeTmp] = useState('')
+  const [editandoPontosRodadaId, setEditandoPontosRodadaId] = useState<string | null>(null)
 
   if (!temporada) {
     return (
@@ -264,6 +266,13 @@ export default function TemporadaDetalhe() {
                       </button>
                     )}
                     <button
+                      onClick={(e) => { e.preventDefault(); setEditandoPontosRodadaId(r.id) }}
+                      className="p-2 rounded-lg border border-teal-800 hover:border-yellow-400/40"
+                      title="Editar pontos manualmente"
+                    >
+                      <Pencil size={13} className="text-yellow-300" />
+                    </button>
+                    <button
                       onClick={(e) => {
                         e.preventDefault()
                         if (confirm(`Excluir Rodada ${r.numero}? Os pontos serão descontados do ranking.`)) {
@@ -312,6 +321,25 @@ export default function TemporadaDetalhe() {
           />
         </Modal>
       )}
+
+      {editandoPontosRodadaId && (() => {
+        const r = temporada.rodadas.find(x => x.id === editandoPontosRodadaId)
+        if (!r) return null
+        return (
+          <Modal title={`Editar pontos — Rodada ${r.numero}`} onClose={() => setEditandoPontosRodadaId(null)} size="lg">
+            <EditarPontosForm
+              rodada={r}
+              jogadores={temporada.jogadores}
+              onCancel={() => setEditandoPontosRodadaId(null)}
+              onSave={(pontos) => {
+                editarRodadaTemporada(temporada.id, r.id, { pontos })
+                setEditandoPontosRodadaId(null)
+                showToast('Pontos atualizados!', 'success')
+              }}
+            />
+          </Modal>
+        )
+      })()}
     </div>
   )
 }
@@ -380,6 +408,84 @@ function JogadorRow({ jogador, onEdit, onRemove }: { jogador: JogadorTemporada; 
         </button>
       )}
     </li>
+  )
+}
+
+function EditarPontosForm({
+  rodada,
+  jogadores,
+  onCancel,
+  onSave,
+}: {
+  rodada: { pontos: { jogadorId: string; pontos: number }[] }
+  jogadores: JogadorTemporada[]
+  onCancel: () => void
+  onSave: (pontos: { jogadorId: string; pontos: number }[]) => void
+}) {
+  // Inclui todos os jogadores da temporada; preenche com valor atual se existir
+  const inicial: Record<string, string> = Object.fromEntries(
+    jogadores.map(j => {
+      const existente = rodada.pontos.find(p => p.jogadorId === j.id)
+      return [j.id, existente ? String(existente.pontos) : '']
+    })
+  )
+  const [valores, setValores] = useState<Record<string, string>>(inicial)
+  const [filtroLiga, setFiltroLiga] = useState<'todas' | 'A' | 'B'>('todas')
+
+  function setV(id: string, v: string) {
+    setValores(prev => ({ ...prev, [id]: v }))
+  }
+
+  function salvar() {
+    const pontos = jogadores
+      .map(j => ({
+        jogadorId: j.id,
+        pontos: Number((valores[j.id] ?? '').toString().replace(',', '.')) || 0,
+      }))
+      .filter(p => p.pontos !== 0)
+    onSave(pontos)
+  }
+
+  const visiveis = jogadores.filter(j => filtroLiga === 'todas' || j.liga === filtroLiga)
+  const total = visiveis.reduce((s, j) => s + (Number(valores[j.id]) || 0), 0)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden">
+          <button onClick={() => setFiltroLiga('todas')} className={`px-3 py-1.5 text-xs ${filtroLiga === 'todas' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Todas</button>
+          <button onClick={() => setFiltroLiga('A')} className={`px-3 py-1.5 text-xs ${filtroLiga === 'A' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga A</button>
+          <button onClick={() => setFiltroLiga('B')} className={`px-3 py-1.5 text-xs ${filtroLiga === 'B' ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>Liga B</button>
+        </div>
+        <span className="text-xs text-teal-400">Total exibido: <strong className="text-yellow-300">{total}</strong></span>
+      </div>
+
+      <div className="max-h-[55vh] overflow-y-auto border border-teal-800 rounded-lg divide-y divide-teal-800/50">
+        {visiveis.map(j => (
+          <div key={j.id} className="flex items-center gap-3 p-2.5">
+            <span className="flex-1 text-sm text-teal-50">{j.nome}</span>
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${j.liga === 'A' ? 'bg-yellow-400/15 text-yellow-300' : 'bg-teal-700/40 text-teal-200'}`}>{j.liga}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              className="input w-24 text-right"
+              placeholder="0"
+              value={valores[j.id] ?? ''}
+              onChange={e => setV(j.id, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-teal-500">
+        Deixe em branco (ou 0) para quem não pontuou. Valores salvos vão sobrescrever a pontuação atual da rodada.
+      </p>
+
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="btn-secondary flex items-center gap-2"><X size={16} /> Cancelar</button>
+        <button onClick={salvar} className="btn-primary flex items-center gap-2"><Trophy size={16} /> Salvar</button>
+      </div>
+    </div>
   )
 }
 
