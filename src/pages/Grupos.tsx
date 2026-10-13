@@ -10,6 +10,7 @@ import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
 import TrocarJogadoresGrupoModal from '../components/duplas/TrocarJogadoresGrupoModal'
 import AlertaReizinho from '../components/duplas/AlertaReizinho'
 import { showToast } from '../components/ui/Toast'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function Grupos() {
   const { id } = useParams<{ id: string }>()
@@ -20,6 +21,7 @@ export default function Grupos() {
   const [editandoGrupo, setEditandoGrupo] = useState<string | null>(null)
   const [editandoTudo, setEditandoTudo] = useState(false)
   const [trocandoJogadores, setTrocandoJogadores] = useState(false)
+  const leitura = useModoLeitura()
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
@@ -46,7 +48,7 @@ export default function Grupos() {
           {isReizinho && <Crown className="text-yellow-300" size={28} />}
           {isReizinho ? 'FASE REIZINHO' : isTodos ? 'FASE DE GRUPOS' : 'FASE DE GRUPOS'}
         </h1>
-        <div className="flex gap-2 flex-wrap">
+        {!leitura && <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setTrocandoJogadores(true)}
             className="btn-secondary flex items-center gap-2 text-sm"
@@ -60,7 +62,7 @@ export default function Grupos() {
           >
             <Edit2 size={16} /> Editar duplas
           </button>
-        </div>
+        </div>}
       </div>
 
       <AlertaReizinho torneio={torneio} />
@@ -76,13 +78,15 @@ export default function Grupos() {
             <div key={grupo.id} className="card p-4 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h3 className="font-display text-2xl text-yellow-300 tracking-wide">{grupo.nome}</h3>
-                <button
-                  onClick={() => setEditandoGrupo(grupo.nome)}
-                  className="btn-ghost p-1.5 text-xs flex items-center gap-1 border border-teal-800 hover:border-yellow-400/40 rounded-lg"
-                  title="Editar duplas deste grupo"
-                >
-                  <Edit2 size={12} /> Editar
-                </button>
+                {!leitura && (
+                  <button
+                    onClick={() => setEditandoGrupo(grupo.nome)}
+                    className="btn-ghost p-1.5 text-xs flex items-center gap-1 border border-teal-800 hover:border-yellow-400/40 rounded-lg"
+                    title="Editar duplas deste grupo"
+                  >
+                    <Edit2 size={12} /> Editar
+                  </button>
+                )}
               </div>
 
               {/* Classificação */}

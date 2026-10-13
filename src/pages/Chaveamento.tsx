@@ -11,6 +11,7 @@ import { gerarChaveamentoEliminatorio } from '../utils/gerarChaveamento'
 import { gerarCSVTorneio } from '../utils/exportarCSV'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
 import AlertaReizinho from '../components/duplas/AlertaReizinho'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function Chaveamento() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +22,7 @@ export default function Chaveamento() {
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
   const [exporting, setExporting] = useState(false)
   const [editandoDuplas, setEditandoDuplas] = useState(false)
+  const leitura = useModoLeitura()
   const exportRef = useRef<HTMLDivElement>(null)
 
   // Detectar se precisa gerar mata-mata (formato grupos + mata-mata)
@@ -150,14 +152,16 @@ export default function Chaveamento() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-4xl text-teal-50 tracking-wide">CHAVEAMENTO</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setEditandoDuplas(true)}
-            className="btn-secondary flex items-center gap-2 text-sm"
-            title="Editar nomes das duplas"
-          >
-            <Edit2 size={16} />
-            Editar duplas
-          </button>
+          {!leitura && (
+            <button
+              onClick={() => setEditandoDuplas(true)}
+              className="btn-secondary flex items-center gap-2 text-sm"
+              title="Editar nomes das duplas"
+            >
+              <Edit2 size={16} />
+              Editar duplas
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -208,7 +212,7 @@ export default function Chaveamento() {
       )}
 
       {/* Fallback: caso o mata-mata não tenha sido gerado automaticamente (torneios antigos), botão manual */}
-      {podeGerarMataMata && (
+      {podeGerarMataMata && !leitura && (
         <div className="card p-4 border-yellow-400/40 bg-yellow-400/5 flex items-center gap-3">
           <Zap size={18} className="text-yellow-300 flex-shrink-0" />
           <div className="flex-1 text-sm text-teal-100">
@@ -256,7 +260,7 @@ export default function Chaveamento() {
       )}
       </div>
 
-      {jogoSelecionado && (
+      {jogoSelecionado && !leitura && (
         <Modal title="Lançar Resultado" onClose={() => setJogoSelecionado(null)}>
           <LancarResultadoModal
             torneioId={id!}
@@ -267,7 +271,7 @@ export default function Chaveamento() {
         </Modal>
       )}
 
-      {editandoDuplas && (
+      {editandoDuplas && !leitura && (
         <Modal title="Editar duplas" onClose={() => setEditandoDuplas(false)} size="lg">
           <EditarDuplasModal
             duplas={torneio.duplas}

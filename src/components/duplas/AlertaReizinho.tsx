@@ -4,6 +4,7 @@ import type { Torneio } from '../../types'
 import { diagnosticarReizinho, resetarReizinho } from '../../utils/repararReizinho'
 import { useTorneioStore } from '../../store/torneioStore'
 import { showToast } from '../ui/Toast'
+import { useModoLeitura } from '../../store/nuvemStore'
 
 interface Props {
   torneio: Torneio
@@ -16,8 +17,9 @@ interface Props {
 export default function AlertaReizinho({ torneio }: Props) {
   const atualizarTorneio = useTorneioStore(s => s.atualizarTorneio)
   const navigate = useNavigate()
+  const leitura = useModoLeitura()
 
-  if (torneio.formato !== 'reizinho') return null
+  if (leitura || torneio.formato !== 'reizinho') return null
 
   const diag = diagnosticarReizinho(torneio)
   if (diag.ok) return null

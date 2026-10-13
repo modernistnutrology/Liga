@@ -5,6 +5,7 @@ import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
 import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function RodadaEstruturadaPage() {
   const navigate = useNavigate()
@@ -15,6 +16,7 @@ export default function RodadaEstruturadaPage() {
     atualizarRodadaEstruturada,
     finalizarRodadaEstruturada,
   } = useTorneioStore()
+  const leitura = useModoLeitura()
 
   const temporada = temporadas.find(t => t.id === id)
   const rodada = temporada?.rodadas.find(r => r.id === rid)
@@ -95,6 +97,7 @@ export default function RodadaEstruturadaPage() {
               ]}
         />
 
+        <fieldset disabled={leitura} className="contents">
         {/* Grupos (2 ou 3) */}
         {getGrupos(estr).map((ids, i) => (
           <FaseCard
@@ -192,6 +195,7 @@ export default function RodadaEstruturadaPage() {
         {is12 && status.finaisOk && (
           <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} onFinalizar={finalizar} />
         )}
+        </fieldset>
       </div>
     </div>
   )

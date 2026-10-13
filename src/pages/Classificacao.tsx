@@ -6,6 +6,7 @@ import type { RankingJogador } from '../utils/gerarReizinho'
 import { BarChart2, Crown, Award } from 'lucide-react'
 import AlertaReizinho from '../components/duplas/AlertaReizinho'
 import { calcularPontuacaoLiga } from '../utils/liga2Fases'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function Classificacao() {
   const { id } = useParams<{ id: string }>()
@@ -206,6 +207,7 @@ function TabelaClass({ linhas, classificados, jogadores }: { linhas: any[]; clas
 
 function ClassificacaoLiga2({ torneio }: any) {
   const encerrarEtapa = useTorneioStore(s => s.encerrarEtapaLigaEComecarNova)
+  const leitura = useModoLeitura()
 
   const pontuacaoAtual = calcularPontuacaoLiga(torneio)
   const etapas = torneio.etapasFinalizadas ?? []
@@ -286,7 +288,7 @@ function ClassificacaoLiga2({ torneio }: any) {
               Rodada {proximoNumero} — Pontuação atual
             </h3>
           </div>
-          {faseFinalConcluida && (
+          {faseFinalConcluida && !leitura && (
             <button
               onClick={() => {
                 if (confirm(`Encerrar Rodada ${proximoNumero} e começar a próxima?\n\nOs pontos desta rodada serão somados ao Ranking Geral. Os grupos e jogos serão zerados (jogadores preservados) para você fazer novo sorteio.`)) {

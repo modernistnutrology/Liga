@@ -5,12 +5,14 @@ import { useTorneioStore } from '../store/torneioStore'
 import { showToast } from '../components/ui/Toast'
 import BackupCard from '../components/BackupCard'
 import { totalRodadas } from '../utils/temporada'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function TemporadasHome() {
   const navigate = useNavigate()
   const { temporadas, criarTemporada, excluirTemporada, importarTemporadaVillage } = useTorneioStore()
   const [novoNome, setNovoNome] = useState('')
   const [confirmar, setConfirmar] = useState<string | null>(null)
+  const leitura = useModoLeitura()
 
   function criar() {
     const nome = novoNome.trim() || `Temporada ${new Date().getFullYear()}`
@@ -43,7 +45,7 @@ export default function TemporadasHome() {
           </button>
         </div>
 
-        <div className="card p-4">
+        {!leitura && <div className="card p-4">
           <h2 className="text-sm text-teal-300 uppercase tracking-wider mb-3">Nova temporada</h2>
           <div className="flex gap-2 flex-wrap">
             <input
@@ -72,13 +74,13 @@ export default function TemporadasHome() {
               <Download size={14} /> Importar temporada atual
             </button>
           </div>
-        </div>
+        </div>}
 
         {temporadas.length === 0 ? (
           <div className="card p-10 text-center">
             <Trophy size={40} className="mx-auto text-yellow-300 mb-3" />
             <p className="text-teal-200">Nenhuma temporada ainda.</p>
-            <p className="text-teal-400 text-sm mt-1">Crie uma para começar a acumular pontos por rodada.</p>
+            {!leitura && <p className="text-teal-400 text-sm mt-1">Crie uma para começar a acumular pontos por rodada.</p>}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -99,7 +101,7 @@ export default function TemporadasHome() {
                     <span className="flex items-center gap-1.5"><Calendar size={12} className="text-teal-500" />{totalRodadas(t)} rodadas</span>
                     <span className="text-yellow-300 font-semibold">{totalPontos.toLocaleString('pt-BR')} pts</span>
                   </div>
-                  <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
+                  {!leitura && <div className="flex gap-2 mt-3" onClick={e => e.stopPropagation()}>
                     {confirmar === t.id ? (
                       <>
                         <button onClick={() => { excluirTemporada(t.id); setConfirmar(null); showToast('Temporada excluída', 'info') }} className="btn-danger text-xs px-3 py-1.5">Excluir</button>
@@ -110,14 +112,14 @@ export default function TemporadasHome() {
                         <Trash2 size={14} className="text-red-400" />
                       </button>
                     )}
-                  </div>
+                  </div>}
                 </div>
               )
             })}
           </div>
         )}
 
-        <BackupCard />
+        {!leitura && <BackupCard />}
       </div>
     </div>
   )

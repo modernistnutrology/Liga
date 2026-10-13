@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import StatusBadge from '../components/torneio/StatusBadge'
 import BackupCard from '../components/BackupCard'
+import { useModoLeitura } from '../store/nuvemStore'
 import { getDemoTorneio } from '../utils/demoData'
 import { showToast } from '../components/ui/Toast'
 import type { Torneio } from '../types'
@@ -20,6 +21,7 @@ const esporteIcon: Record<string, LucideIcon> = {
 
 export default function Home() {
   const { torneios, excluirTorneio, carregarDemo } = useTorneioStore()
+  const leitura = useModoLeitura()
   const navigate = useNavigate()
   const [filtroStatus, setFiltroStatus] = useState<string>('todos')
   const [filtroEsporte, setFiltroEsporte] = useState<string>('todos')
@@ -120,7 +122,7 @@ export default function Home() {
 
         {/* Actions */}
         <div className="flex gap-2">
-          {torneios.length === 0 && (
+          {torneios.length === 0 && !leitura && (
             <button onClick={handleDemo} className="btn-secondary flex items-center gap-2 text-sm">
               <Zap size={16} />
               Demo
@@ -142,22 +144,32 @@ export default function Home() {
             <Trophy size={14} />
             <span className="hidden sm:inline">Planilha</span>
           </button>
-          <button onClick={() => navigate('/novo-torneio')} className="btn-primary flex items-center gap-2">
-            <Plus size={18} />
-            Novo torneio
-          </button>
+          {!leitura && (
+            <button onClick={() => navigate('/novo-torneio')} className="btn-primary flex items-center gap-2">
+              <Plus size={18} />
+              Novo torneio
+            </button>
+          )}
         </div>
       </div>
 
       {/* Grid */}
       {filtrados.length === 0 ? (
-        <EmptyState hasTorneios={torneios.length > 0} onDemo={handleDemo} onNew={() => navigate('/novo-torneio')} />
+        leitura && torneios.length === 0 ? (
+          <div className="card p-12 text-center">
+            <Trophy size={40} className="mx-auto text-yellow-300 mb-3" />
+            <p className="text-teal-200">Nenhum torneio publicado ainda.</p>
+          </div>
+        ) : (
+          <EmptyState hasTorneios={torneios.length > 0} onDemo={handleDemo} onNew={() => navigate('/novo-torneio')} />
+        )
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtrados.map(t => (
             <TorneioCard
               key={t.id}
               torneio={t}
+              podeExcluir={!leitura}
               confirmar={confirmarExcluir === t.id}
               onOpen={() => navigate(`/torneio/${t.id}`)}
               onDelete={() => setConfirmarExcluir(t.id)}
@@ -168,7 +180,7 @@ export default function Home() {
         </div>
       )}
 
-      <BackupCard />
+      {!leitura && <BackupCard />}
     </div>
   )
 }
@@ -218,6 +230,7 @@ function EmptyState({ hasTorneios, onDemo, onNew }: { hasTorneios: boolean; onDe
 
 interface CardProps {
   torneio: Torneio
+  podeExcluir: boolean
   confirmar: boolean
   onOpen: () => void
   onDelete: () => void
@@ -225,7 +238,7 @@ interface CardProps {
   onConfirmDelete: () => void
 }
 
-function TorneioCard({ torneio: t, confirmar, onOpen, onDelete, onCancelDelete, onConfirmDelete }: CardProps) {
+function TorneioCard({ torneio: t, podeExcluir, confirmar, onOpen, onDelete, onCancelDelete, onConfirmDelete }: CardProps) {
   const Icon = esporteIcon[t.esporte] ?? Trophy
   const formatoLabel: Record<string, string> = {
     eliminatorio: 'Eliminatório',
@@ -297,7 +310,7 @@ function TorneioCard({ torneio: t, confirmar, onOpen, onDelete, onCancelDelete, 
           <button onClick={onOpen} className="btn-primary text-sm flex-1 flex items-center justify-center gap-1.5">
             Abrir <ChevronRight size={14} />
           </button>
-          {confirmar ? (
+          {!podeExcluir ? null : confirmar ? (
             <>
               <button onClick={onConfirmDelete} className="btn-danger text-xs px-3 py-2">Excluir</button>
               <button onClick={onCancelDelete} className="btn-secondary text-xs px-3 py-2">Cancelar</button>

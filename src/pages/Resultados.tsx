@@ -7,6 +7,7 @@ import StatusBadge from '../components/torneio/StatusBadge'
 import type { Jogo } from '../types'
 import { ClipboardList } from 'lucide-react'
 import AlertaReizinho from '../components/duplas/AlertaReizinho'
+import { useModoLeitura } from '../store/nuvemStore'
 
 type Filtro = 'todos' | 'aguardando' | 'finalizado' | 'wo'
 
@@ -16,6 +17,7 @@ export default function Resultados() {
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [faseAtiva, setFaseAtiva] = useState<string>('todas')
   const [jogoSelecionado, setJogoSelecionado] = useState<Jogo | null>(null)
+  const leitura = useModoLeitura()
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
 
@@ -111,7 +113,7 @@ export default function Resultados() {
         </>
       )}
 
-      {jogoSelecionado && (
+      {jogoSelecionado && !leitura && (
         <Modal title="Lançar Resultado" onClose={() => setJogoSelecionado(null)}>
           <LancarResultadoModal
             torneioId={id!}

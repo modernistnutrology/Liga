@@ -2,14 +2,18 @@ import { NavLink, useParams } from 'react-router-dom'
 import { X } from 'lucide-react'
 import { navOrder } from '../../utils/sectionColors'
 import SectionIcon from '../ui/SectionIcon'
+import { useModoLeitura } from '../../store/nuvemStore'
 
 interface SidebarProps {
   open: boolean
   onClose: () => void
 }
 
+const SECOES_SO_ADMIN = new Set(['participantes', 'sorteio'])
+
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const { id } = useParams()
+  const leitura = useModoLeitura()
 
   return (
     <>
@@ -38,7 +42,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navOrder.map(theme => (
+          {navOrder.filter(theme => !(leitura && SECOES_SO_ADMIN.has(theme.key))).map(theme => (
             <NavLink
               key={theme.key}
               to={id ? `/torneio/${id}${theme.key !== 'painel' ? `/${theme.key}` : ''}` : '/'}

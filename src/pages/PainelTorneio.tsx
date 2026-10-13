@@ -5,11 +5,13 @@ import { sectionThemes } from '../utils/sectionColors'
 import SectionIcon from '../components/ui/SectionIcon'
 import StatusBadge from '../components/torneio/StatusBadge'
 import { showToast } from '../components/ui/Toast'
+import { useModoLeitura } from '../store/nuvemStore'
 
 export default function PainelTorneio() {
   const { id } = useParams<{ id: string }>()
   const { getTorneio, atualizarTorneio } = useTorneioStore()
   const navigate = useNavigate()
+  const leitura = useModoLeitura()
   const torneio = getTorneio(id!)
 
   if (!torneio) return <div className="text-teal-300">Torneio não encontrado.</div>
@@ -38,8 +40,10 @@ export default function PainelTorneio() {
     torneio.formato === 'pontos_corridos'
 
   const acoes = [
-    { theme: sectionThemes.participantes, desc: `${torneio.jogadores.length} jogadores · ${torneio.duplas.length} duplas` },
-    { theme: sectionThemes.sorteio,       desc: 'Sortear duplas e chaveamento' },
+    ...(leitura ? [] : [
+      { theme: sectionThemes.participantes, desc: `${torneio.jogadores.length} jogadores · ${torneio.duplas.length} duplas` },
+      { theme: sectionThemes.sorteio,       desc: 'Sortear duplas e chaveamento' },
+    ]),
     ...(temGrupos ? [{ theme: sectionThemes.grupos, desc: `${torneio.grupos.length} grupo(s) · rodízio e ranking` }] : []),
     { theme: sectionThemes.chaveamento,   desc: 'Bracket visual interativo' },
     { theme: sectionThemes.resultados,    desc: `${jogosFin}/${jogosTotal} jogos lançados` },
@@ -73,7 +77,7 @@ export default function PainelTorneio() {
             {torneio.descricao && <p className="text-teal-300 text-sm mt-2">{torneio.descricao}</p>}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className={`flex gap-2 ${leitura ? 'hidden' : ''}`}>
             {torneio.status === 'configurando' && (
               <button onClick={iniciarTorneio} className="btn-primary flex items-center gap-2">
                 <Play size={16} />

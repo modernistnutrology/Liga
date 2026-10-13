@@ -7,6 +7,7 @@ import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
 import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
+import { useModoLeitura } from '../store/nuvemStore'
 import { totalRodadas, rotuloRodada, calcularRankingTemporada } from '../utils/temporada'
 import { showToast } from '../components/ui/Toast'
 
@@ -34,6 +35,7 @@ export default function TemporadaDetalhe() {
   const [editandoNome, setEditandoNome] = useState(false)
   const [nomeTmp, setNomeTmp] = useState('')
   const [editandoPontosRodadaId, setEditandoPontosRodadaId] = useState<string | null>(null)
+  const leitura = useModoLeitura()
 
   if (!temporada) {
     return (
@@ -81,9 +83,11 @@ export default function TemporadaDetalhe() {
             ) : (
               <h1 className="font-display text-2xl sm:text-4xl text-yellow-300 tracking-wide flex items-center gap-2">
                 <Trophy size={26} /> {temporada.nome}
-                <button onClick={() => { setNomeTmp(temporada.nome); setEditandoNome(true) }} className="text-teal-400 hover:text-yellow-300 p-1" title="Renomear">
-                  <Pencil size={14} />
-                </button>
+                {!leitura && (
+                  <button onClick={() => { setNomeTmp(temporada.nome); setEditandoNome(true) }} className="text-teal-400 hover:text-yellow-300 p-1" title="Renomear">
+                    <Pencil size={14} />
+                  </button>
+                )}
               </h1>
             )}
           </div>
@@ -106,7 +110,7 @@ export default function TemporadaDetalhe() {
           <StatCard label="Liga A / B" valor={`${temporada.jogadores.filter(j => j.liga === 'A').length} / ${temporada.jogadores.filter(j => j.liga === 'B').length}`} />
         </div>
 
-        <PlanilhaSyncPanel temporada={temporada} />
+        {!leitura && <PlanilhaSyncPanel temporada={temporada} />}
 
         {/* Toolbar: filtro + nova rodada */}
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -115,7 +119,7 @@ export default function TemporadaDetalhe() {
             <Btn ativo={filtro === 'A'} onClick={() => setFiltro('A')}>Liga A</Btn>
             <Btn ativo={filtro === 'B'} onClick={() => setFiltro('B')}>Liga B</Btn>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          {!leitura && <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => navigate(`/temporada/${temporada.id}/rodada/nova`)}
               disabled={temporada.jogadores.length < 8}
@@ -132,7 +136,7 @@ export default function TemporadaDetalhe() {
             >
               <Edit3 size={16} /> Lançar pontos manual
             </button>
-          </div>
+          </div>}
         </div>
 
         {/* Ranking */}
@@ -179,7 +183,7 @@ export default function TemporadaDetalhe() {
         </div>
 
         {/* Jogadores */}
-        <div className="card overflow-hidden">
+        {!leitura && <div className="card overflow-hidden">
           <div className="p-4 border-b border-teal-800 flex items-center gap-2">
             <Users className="text-yellow-300" size={20} />
             <h2 className="font-display text-xl text-yellow-300 tracking-wide">JOGADORES</h2>
@@ -214,7 +218,7 @@ export default function TemporadaDetalhe() {
               ))}
             </ul>
           )}
-        </div>
+        </div>}
 
         {/* Rodadas */}
         <div className="card overflow-hidden">
@@ -246,11 +250,12 @@ export default function TemporadaDetalhe() {
                       <button
                         onClick={(e) => { e.preventDefault(); navigate(`/temporada/${temporada.id}/rodada/${r.id}`) }}
                         className="btn-secondary text-xs flex items-center gap-1 py-1.5"
-                        title="Abrir / editar jogos"
+                        title={leitura ? 'Ver jogos' : 'Abrir / editar jogos'}
                       >
-                        <Play size={12} /> Abrir
+                        <Play size={12} /> {leitura ? 'Ver jogos' : 'Abrir'}
                       </button>
                     )}
+                    {!leitura && <>
                     <button
                       onClick={(e) => { e.preventDefault(); setEditandoPontosRodadaId(r.id) }}
                       className="p-2 rounded-lg border border-teal-800 hover:border-yellow-400/40"
@@ -270,6 +275,7 @@ export default function TemporadaDetalhe() {
                     >
                       <Trash2 size={14} className="text-red-400" />
                     </button>
+                    </>}
                   </summary>
                   <div className="px-4 pb-4">
                     <table className="w-full text-xs">

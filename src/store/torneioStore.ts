@@ -10,6 +10,7 @@ import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } fro
 import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
 import { normalizarTemporada, proximoNumeroRodada } from '../utils/temporada'
 import type { PlanilhaConfig } from '../utils/planilhaSync'
+import { emModoLeitura } from './nuvemStore'
 
 /**
  * Após a Fase 1 do formato Liga 2 Fases acabar, gera automaticamente a Fase Final:
@@ -251,11 +252,23 @@ interface TorneioStore {
 
   // Demo
   carregarDemo: (t: Torneio) => void
+
+  /** Aplica o estado vindo da nuvem; passa por cima da trava de modo leitura. */
+  aplicarDadosNuvem: (dados: { torneios: Torneio[]; temporadas: Temporada[] }) => void
 }
 
 export const useTorneioStore = create<TorneioStore>()(
   persist(
-    (set, get) => ({
+    (setBruto, get) => {
+      const set: typeof setBruto = ((...args: Parameters<typeof setBruto>) => {
+        if (emModoLeitura()) return
+        setBruto(...args)
+      }) as typeof setBruto
+      return {
+      aplicarDadosNuvem: (dados) => setBruto({
+        torneios: dados.torneios ?? [],
+        temporadas: (dados.temporadas ?? []).map(normalizarTemporada),
+      }),
       torneios: [],
       temporadas: [],
       darkMode: true,
@@ -583,12 +596,13 @@ export const useTorneioStore = create<TorneioStore>()(
         })
       },
 
-      toggleDarkMode: () => set(s => ({ darkMode: !s.darkMode })),
+      toggleDarkMode: () => setBruto(s => ({ darkMode: !s.darkMode })),
 
       carregarDemo: (t) => {
         set(s => ({ torneios: [...s.torneios, t] }))
       },
-    }),
+      }
+    },
     {
       name: 'torneios-storage',
       version: 1,
