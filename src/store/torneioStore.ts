@@ -208,6 +208,7 @@ interface TorneioStore {
   editarRodadaTemporada: (temporadaId: string, rodadaId: string, data: Partial<RodadaTemporada>) => void
   removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
   importarTemporadaVillage: () => string
+  importarDados: (dados: { torneios: Torneio[]; temporadas: Temporada[] }, modo: 'substituir' | 'mesclar') => void
   criarRodadaEstruturada: (temporadaId: string, estr: RodadaEstruturada, nome?: string) => string | null
   atualizarRodadaEstruturada: (temporadaId: string, rodadaId: string, estr: RodadaEstruturada) => void
   finalizarRodadaEstruturada: (temporadaId: string, rodadaId: string, pontos: { jogadorId: string; pontos: number }[]) => void
@@ -320,6 +321,20 @@ export const useTorneioStore = create<TorneioStore>()(
         const nova = criarTemporadaVillageSeed()
         set(s => ({ temporadas: [...s.temporadas, nova] }))
         return nova.id
+      },
+      importarDados: (dados, modo) => {
+        if (modo === 'substituir') {
+          set({ torneios: dados.torneios, temporadas: dados.temporadas })
+          return
+        }
+        const mesclar = <T extends { id: string }>(atuais: T[], novos: T[]): T[] => {
+          const novosIds = new Set(novos.map(n => n.id))
+          return [...atuais.filter(a => !novosIds.has(a.id)), ...novos]
+        }
+        set(s => ({
+          torneios: mesclar(s.torneios, dados.torneios),
+          temporadas: mesclar(s.temporadas, dados.temporadas),
+        }))
       },
       criarRodadaEstruturada: (temporadaId, estr, nome) => {
         const t = get().temporadas.find(x => x.id === temporadaId)

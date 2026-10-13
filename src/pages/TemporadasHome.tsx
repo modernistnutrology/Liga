@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Trophy, Trash2, ChevronRight, Users, Calendar, ExternalLink, Download } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import { showToast } from '../components/ui/Toast'
+import BackupCard from '../components/BackupCard'
 
 export default function TemporadasHome() {
   const navigate = useNavigate()
@@ -114,6 +115,8 @@ export default function TemporadasHome() {
             })}
           </div>
         )}
+
+        <BackupCard />
       </div>
     </div>
   )

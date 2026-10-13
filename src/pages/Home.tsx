@@ -4,6 +4,7 @@ import { Plus, Trophy, Trash2, Zap, Calendar, MapPin, Volleyball, CircleDot, Sun
 import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import StatusBadge from '../components/torneio/StatusBadge'
+import BackupCard from '../components/BackupCard'
 import { getDemoTorneio } from '../utils/demoData'
 import { showToast } from '../components/ui/Toast'
 import type { Torneio } from '../types'
@@ -166,6 +167,8 @@ export default function Home() {
           ))}
         </div>
       )}
+
+      <BackupCard />
     </div>
   )
 }
