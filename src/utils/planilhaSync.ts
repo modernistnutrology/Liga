@@ -44,20 +44,23 @@ function resposta(obj) {
 `
 
 export function montarTabelaPlanilha(t: Temporada) {
-  const rodadas = [...t.rodadas].sort((a, b) =>
-    (a.importada === b.importada ? 0 : a.importada ? -1 : 1) || a.numero - b.numero
-  )
-  const cabecalho = [
-    'Pos.', 'Jogador', 'Liga', 'Rodadas jogadas', 'Total',
-    ...rodadas.map(r => rotuloRodada(t, r).replace(/^Rodadas? /, 'R')),
+  // Liga A e Liga B da mesma rodada compartilham o número e viram uma coluna só
+  const importadas = t.rodadas.filter(r => r.importada)
+  const numeros = [...new Set(t.rodadas.filter(r => !r.importada).map(r => r.numero))].sort((a, b) => a - b)
+  const colunas = [
+    ...importadas.map(r => ({ titulo: rotuloRodada(t, r).replace(/^Rodadas? /, 'R'), rodadas: [r] })),
+    ...numeros.map(n => ({ titulo: `R${n}`, rodadas: t.rodadas.filter(r => !r.importada && r.numero === n) })),
   ]
+  const cabecalho = ['Pos.', 'Jogador', 'Liga', 'Rodadas jogadas', 'Total', ...colunas.map(c => c.titulo)]
   const linhas = calcularRankingTemporada(t).map(l => [
     l.pos,
     l.jogador.nome,
     l.jogador.liga,
     l.rodadasJogadas,
     l.pontos,
-    ...rodadas.map(r => r.pontos.find(p => p.jogadorId === l.jogador.id)?.pontos || ''),
+    ...colunas.map(c =>
+      c.rodadas.reduce((soma, r) => soma + (r.pontos.find(p => p.jogadorId === l.jogador.id)?.pontos ?? 0), 0) || ''
+    ),
   ])
   return {
     titulo: `${t.nome} — Classificação geral (app)`,

@@ -1,4 +1,6 @@
-import type { Temporada, JogadorTemporada, Liga } from '../types'
+import type { Temporada, JogadorTemporada, Liga, RodadaTemporada } from '../types'
+
+const LIGAS: Liga[] = ['A', 'B']
 
 export interface LinhaRankingTemporada {
   pos: number
@@ -13,17 +15,17 @@ export function calcularRankingTemporada(t: Temporada, liga?: Liga): LinhaRankin
     .filter(j => !liga || j.liga === liga)
     .map(j => {
       let pontos = 0
-      let rodadasContadas = 0
+      const numerosJogados = new Set<number>()
       let jogouImportada = false
       for (const r of t.rodadas) {
         const p = r.pontos.find(x => x.jogadorId === j.id)
         if (!p || p.pontos <= 0) continue
         pontos += p.pontos
         if (r.importada) jogouImportada = true
-        else rodadasContadas++
+        else numerosJogados.add(r.numero)
       }
       const rodadasDaPlanilha = j.rodadasJogadasOverride ?? (jogouImportada ? 1 : 0)
-      return { jogador: j, pontos, rodadasJogadas: rodadasDaPlanilha + rodadasContadas }
+      return { jogador: j, pontos, rodadasJogadas: rodadasDaPlanilha + numerosJogados.size }
     })
     .sort((a, b) => b.pontos - a.pontos || a.jogador.nome.localeCompare(b.jogador.nome))
 
@@ -50,16 +52,69 @@ export function normalizarTemporada(t: Temporada): Temporada {
   }
 }
 
+/** Ligas cobertas por um lançamento: a liga jogada no app, ou as ligas de quem pontuou no lançamento manual. */
+export function ligasDoLancamento(t: Temporada, r: Pick<RodadaTemporada, 'pontos' | 'estruturada'>): Liga[] {
+  if (r.estruturada) return [r.estruturada.liga]
+  const ligas = new Set<Liga>()
+  for (const p of r.pontos) {
+    if (p.pontos <= 0) continue
+    const j = t.jogadores.find(x => x.id === p.jogadorId)
+    if (j) ligas.add(j.liga)
+  }
+  return LIGAS.filter(l => ligas.has(l))
+}
+
+export interface SemanaRodada {
+  numero: number
+  ligas: Liga[]
+  completa: boolean
+}
+
+/** Cada número de rodada agrupa os lançamentos da Liga A e da Liga B da mesma semana. */
+export function semanasDaTemporada(t: Temporada): SemanaRodada[] {
+  const porNumero = new Map<number, Set<Liga>>()
+  for (const r of t.rodadas) {
+    if (r.importada) continue
+    const ligas = porNumero.get(r.numero) ?? new Set<Liga>()
+    ligasDoLancamento(t, r).forEach(l => ligas.add(l))
+    porNumero.set(r.numero, ligas)
+  }
+  return [...porNumero.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([numero, ligas]) => ({
+      numero,
+      ligas: LIGAS.filter(l => ligas.has(l)),
+      completa: LIGAS.every(l => ligas.has(l)),
+    }))
+}
+
+/** Uma rodada só conta quando tem a Liga A e a Liga B lançadas. */
 export function totalRodadas(t: Temporada): number {
-  return (t.rodadasAnteriores ?? 0) + t.rodadas.filter(r => !r.importada).length
+  return (t.rodadasAnteriores ?? 0) + semanasDaTemporada(t).filter(s => s.completa).length
 }
 
-export function proximoNumeroRodada(t: Temporada): number {
-  const maiorJogada = t.rodadas.filter(r => !r.importada).reduce((m, r) => Math.max(m, r.numero), 0)
-  return Math.max(t.rodadasAnteriores ?? 0, maiorJogada) + 1
+/** Rodada aberta (só uma das ligas lançada), se houver. */
+export function rodadaEmAndamento(t: Temporada): SemanaRodada | null {
+  const semanas = semanasDaTemporada(t)
+  const ultima = semanas[semanas.length - 1]
+  return ultima && !ultima.completa ? ultima : null
 }
 
-export function rotuloRodada(t: Temporada, r: { numero: number; importada?: boolean }): string {
+/**
+ * Número para um novo lançamento: entra na rodada mais recente se ela ainda
+ * não tiver nenhuma dessas ligas; senão abre a rodada seguinte.
+ */
+export function proximoNumeroRodada(t: Temporada, ligasNovas: Liga[]): number {
+  const semanas = semanasDaTemporada(t)
+  const ultima = semanas[semanas.length - 1]
+  if (ultima && ligasNovas.length > 0 && ligasNovas.every(l => !ultima.ligas.includes(l))) {
+    return ultima.numero
+  }
+  return Math.max(t.rodadasAnteriores ?? 0, ultima?.numero ?? 0) + 1
+}
+
+export function rotuloRodada(t: Temporada, r: Pick<RodadaTemporada, 'numero' | 'importada' | 'pontos' | 'estruturada'>): string {
   if (r.importada && (t.rodadasAnteriores ?? 0) > 1) return `Rodadas 1–${t.rodadasAnteriores}`
-  return `Rodada ${r.numero}`
+  const ligas = ligasDoLancamento(t, r)
+  return ligas.length === 1 ? `Rodada ${r.numero} · Liga ${ligas[0]}` : `Rodada ${r.numero}`
 }

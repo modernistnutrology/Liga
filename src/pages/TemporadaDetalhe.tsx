@@ -8,7 +8,7 @@ import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
 import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
 import { useModoLeitura } from '../store/nuvemStore'
-import { totalRodadas, rotuloRodada, calcularRankingTemporada } from '../utils/temporada'
+import { totalRodadas, rotuloRodada, calcularRankingTemporada, rodadaEmAndamento } from '../utils/temporada'
 import { showToast } from '../components/ui/Toast'
 
 type Filtro = 'todas' | 'A' | 'B'
@@ -106,7 +106,16 @@ export default function TemporadaDetalhe() {
         {/* Estatísticas */}
         <div className="grid grid-cols-3 gap-3">
           <StatCard label="Jogadores" valor={temporada.jogadores.length} />
-          <StatCard label="Rodadas" valor={totalRodadas(temporada)} />
+          <StatCard
+            label="Rodadas"
+            valor={totalRodadas(temporada)}
+            detalhe={(() => {
+              const aberta = rodadaEmAndamento(temporada)
+              if (!aberta) return undefined
+              const falta = aberta.ligas.includes('A') ? 'B' : 'A'
+              return `Rodada ${aberta.numero}: falta Liga ${falta}`
+            })()}
+          />
           <StatCard label="Liga A / B" valor={`${temporada.jogadores.filter(j => j.liga === 'A').length} / ${temporada.jogadores.filter(j => j.liga === 'B').length}`} />
         </div>
 
@@ -230,7 +239,9 @@ export default function TemporadaDetalhe() {
             <div className="p-6 text-center text-teal-400 text-sm">Nenhuma rodada registrada.</div>
           ) : (
             <div className="divide-y divide-teal-800/50">
-              {[...temporada.rodadas].sort((a, b) => b.numero - a.numero).map(r => (
+              {[...temporada.rodadas]
+                .sort((a, b) => b.numero - a.numero || rotuloRodada(temporada, a).localeCompare(rotuloRodada(temporada, b)))
+                .map(r => (
                 <details key={r.id} className="group">
                   <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -266,7 +277,7 @@ export default function TemporadaDetalhe() {
                     <button
                       onClick={(e) => {
                         e.preventDefault()
-                        if (confirm(`Excluir Rodada ${r.numero}? Os pontos serão descontados do ranking.`)) {
+                        if (confirm(`Excluir ${rotuloRodada(temporada, r)}? Os pontos serão descontados do ranking.`)) {
                           removerRodadaTemporada(temporada.id, r.id)
                           showToast('Rodada removida', 'info')
                         }
@@ -344,11 +355,12 @@ function Btn({ ativo, onClick, children }: { ativo: boolean; onClick: () => void
   )
 }
 
-function StatCard({ label, valor }: { label: string; valor: number | string }) {
+function StatCard({ label, valor, detalhe }: { label: string; valor: number | string; detalhe?: string }) {
   return (
     <div className="card p-4">
       <div className="text-[10px] uppercase tracking-wider text-teal-400">{label}</div>
       <div className="font-display text-2xl text-yellow-300 mt-1">{valor}</div>
+      {detalhe && <div className="text-[11px] text-teal-300 mt-0.5 leading-tight">{detalhe}</div>}
     </div>
   )
 }

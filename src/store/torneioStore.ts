@@ -8,7 +8,7 @@ import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
 import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
 import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
-import { normalizarTemporada, proximoNumeroRodada } from '../utils/temporada'
+import { normalizarTemporada, proximoNumeroRodada, ligasDoLancamento } from '../utils/temporada'
 import type { PlanilhaConfig } from '../utils/planilhaSync'
 import { emModoLeitura } from './nuvemStore'
 
@@ -322,7 +322,8 @@ export const useTorneioStore = create<TorneioStore>()(
         set(s => ({
           temporadas: s.temporadas.map(t => {
             if (t.id !== temporadaId) return t
-            const nova: RodadaTemporada = { ...rodada, id: nanoid(), numero: proximoNumeroRodada(t) }
+            const numero = proximoNumeroRodada(t, ligasDoLancamento(t, rodada))
+            const nova: RodadaTemporada = { ...rodada, id: nanoid(), numero }
             return { ...t, rodadas: [...t.rodadas, nova], atualizadoEm: new Date().toISOString() }
           }),
         }))
@@ -366,7 +367,7 @@ export const useTorneioStore = create<TorneioStore>()(
         if (!t) return null
         const nova: RodadaTemporada = {
           id: nanoid(),
-          numero: proximoNumeroRodada(t),
+          numero: proximoNumeroRodada(t, [estr.liga]),
           data: new Date().toISOString(),
           nome,
           pontos: [],
