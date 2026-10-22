@@ -8,7 +8,7 @@ import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { formarDuplasMataMataTodos } from '../utils/todosContraTodos'
 import { gerarFaseFinal, fase1Concluida, FINAL_FASE, calcularPontuacaoLiga } from '../utils/liga2Fases'
 import { criarTemporadaVillageSeed } from '../utils/seedTemporadaVillage'
-import { normalizarTemporada, proximoNumeroRodada, ligasDoLancamento } from '../utils/temporada'
+import { normalizarTemporada, proximoNumeroRodada, ligasDoLancamento, aplicarRegrasAtuais, VERSAO_REGRAS_ATUAL } from '../utils/temporada'
 import type { PlanilhaConfig } from '../utils/planilhaSync'
 import { emModoLeitura } from './nuvemStore'
 
@@ -217,6 +217,8 @@ interface TorneioStore {
   removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
   importarTemporadaVillage: () => string
   importarDados: (dados: { torneios: Torneio[]; temporadas: Temporada[] }, modo: 'substituir' | 'mesclar') => void
+  /** Atualiza temporadas gravadas com regras de pontuação antigas; só o admin consegue gravar. */
+  aplicarRegrasAtuaisTemporadas: () => void
   criarRodadaEstruturada: (temporadaId: string, estr: RodadaEstruturada, nome?: string) => string | null
   atualizarRodadaEstruturada: (temporadaId: string, rodadaId: string, estr: RodadaEstruturada) => void
   finalizarRodadaEstruturada: (temporadaId: string, rodadaId: string, pontos: { jogadorId: string; pontos: number }[]) => void
@@ -281,7 +283,9 @@ export const useTorneioStore = create<TorneioStore>()(
       criarTemporada: (nome) => {
         const id = nanoid()
         const now = new Date().toISOString()
-        const temporada: Temporada = { id, nome, jogadores: [], rodadas: [], criadoEm: now, atualizadoEm: now }
+        const temporada: Temporada = {
+          id, nome, jogadores: [], rodadas: [], versaoRegras: VERSAO_REGRAS_ATUAL, criadoEm: now, atualizadoEm: now,
+        }
         set(s => ({ temporadas: [...s.temporadas, temporada] }))
         return id
       },
@@ -346,6 +350,18 @@ export const useTorneioStore = create<TorneioStore>()(
         const nova = criarTemporadaVillageSeed()
         set(s => ({ temporadas: [...s.temporadas, nova] }))
         return nova.id
+      },
+      aplicarRegrasAtuaisTemporadas: () => {
+        set(s => {
+          let mudou = false
+          const temporadas = s.temporadas.map(t => {
+            const atualizada = aplicarRegrasAtuais(t)
+            if (atualizada === t) return t
+            mudou = true
+            return { ...atualizada, atualizadoEm: new Date().toISOString() }
+          })
+          return mudou ? { temporadas } : s
+        })
       },
       importarDados: (dadosBrutos, modo) => {
         const dados = { ...dadosBrutos, temporadas: dadosBrutos.temporadas.map(normalizarTemporada) }

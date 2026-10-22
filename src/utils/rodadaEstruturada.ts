@@ -1,4 +1,4 @@
-import type { JogoRodada, RodadaEstruturada, JogadorTemporada } from '../types'
+import type { JogoRodada, RodadaEstruturada, JogadorTemporada, Liga } from '../types'
 import { nanoid } from './nanoid'
 
 /**
@@ -225,6 +225,9 @@ function perdedoresJogo(j: JogoRodada | undefined): string[] | null {
   return (j.placar1 ?? 0) > (j.placar2 ?? 0) ? [...j.dupla2] : [...j.dupla]
 }
 
+/** A Liga B vale 60% da tabela da Liga A. */
+export const FATOR_PONTOS_LIGA: Record<Liga, number> = { A: 1, B: 0.6 }
+
 /** Calcula pontos finais. Trata ambos formatos (8 rodízio final / 12 mata-mata). */
 export function calcularPontosRodada(
   estr: RodadaEstruturada,
@@ -267,6 +270,9 @@ export function calcularPontosRodada(
     })
   })
 
+  const fator = FATOR_PONTOS_LIGA[estr.liga]
   const idsValidos = new Set(jogadores.map(j => j.id))
-  return resultado.filter(r => idsValidos.has(r.jogadorId))
+  return resultado
+    .filter(r => idsValidos.has(r.jogadorId))
+    .map(r => ({ ...r, pontos: Math.round(r.pontos * fator) }))
 }

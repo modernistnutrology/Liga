@@ -134,7 +134,7 @@ export default function RodadaEstruturadaPage() {
           />
         )}
         {!is12 && fases.faseFinal && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} onFinalizar={finalizar} />
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} onFinalizar={finalizar} />
         )}
 
         {/* Mata-mata — formato 12 */}
@@ -193,7 +193,7 @@ export default function RodadaEstruturadaPage() {
           </>
         )}
         {is12 && status.finaisOk && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} onFinalizar={finalizar} />
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} onFinalizar={finalizar} />
         )}
         </fieldset>
       </div>
@@ -368,14 +368,16 @@ function FaseCard({
 }
 
 function ResumoFinal({
-  estr, jogadores, finalizada, onFinalizar,
+  estr, jogadores, finalizada, pontosGravados, onFinalizar,
 }: {
   estr: RodadaEstr
   jogadores: JogadorTemporada[]
   finalizada: boolean
+  pontosGravados: { jogadorId: string; pontos: number }[]
   onFinalizar: (pontos: { jogadorId: string; pontos: number }[]) => void
 }) {
-  const calculados = calcularPontosRodada(estr, jogadores)
+  // Depois de lançada, vale o que está gravado (pode ter sido editado à mão ou corrigido)
+  const calculados = finalizada ? pontosGravados : calcularPontosRodada(estr, jogadores)
   const porNome = (id: string) => jogadores.find(j => j.id === id)?.nome ?? '?'
   const [editado, setEditado] = useState<Record<string, string>>(() =>
     Object.fromEntries(calculados.map(p => [p.jogadorId, String(p.pontos)]))
@@ -436,7 +438,7 @@ function ResumoFinal({
                   />
                 ) : (
                   <span className="font-bold text-yellow-300 text-lg">
-                    {Number(editado[p.jogadorId] ?? p.pontos)}
+                    {finalizada ? p.pontos : Number(editado[p.jogadorId] ?? p.pontos)}
                   </span>
                 )}
               </td>

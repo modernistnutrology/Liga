@@ -88,6 +88,26 @@ export function semanasDaTemporada(t: Temporada): SemanaRodada[] {
     }))
 }
 
+/** v2: Liga B passou a valer 60% da tabela da Liga A. */
+export const VERSAO_REGRAS_ATUAL = 2
+const MAIOR_PONTUACAO_LIGA_B = 600
+
+/** Converte para 60% as rodadas só da Liga B que foram lançadas com a tabela cheia. */
+export function aplicarRegrasAtuais(t: Temporada): Temporada {
+  if ((t.versaoRegras ?? 1) >= VERSAO_REGRAS_ATUAL) return t
+  return {
+    ...t,
+    versaoRegras: VERSAO_REGRAS_ATUAL,
+    rodadas: t.rodadas.map(r => {
+      if (r.importada) return r
+      const ligas = ligasDoLancamento(t, r)
+      if (ligas.length !== 1 || ligas[0] !== 'B') return r
+      if (Math.max(0, ...r.pontos.map(p => p.pontos)) <= MAIOR_PONTUACAO_LIGA_B) return r
+      return { ...r, pontos: r.pontos.map(p => ({ ...p, pontos: Math.round(p.pontos * 0.6) })) }
+    }),
+  }
+}
+
 /** Uma rodada só conta quando tem a Liga A e a Liga B lançadas. */
 export function totalRodadas(t: Temporada): number {
   return (t.rodadasAnteriores ?? 0) + semanasDaTemporada(t).filter(s => s.completa).length

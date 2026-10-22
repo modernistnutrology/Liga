@@ -63,6 +63,7 @@ export function criarTemporadaVillageSeed(): Temporada {
     id: nanoid(),
     nome: 'Temporada Village — atual',
     rodadasAnteriores: 4,
+    versaoRegras: 2,
     jogadores,
     rodadas: [rodadaImportada],
     criadoEm: now,

@@ -72,9 +72,13 @@ function agendarEnvio() {
 /** Admin: alterações locais pendentes vencem; senão a nuvem vence; nuvem vazia recebe os dados locais. */
 async function sincronizarAoEntrar() {
   if (ehAdmin()) {
-    if (temPendente()) return enviar()
-    const existe = await puxar()
-    if (!existe) return enviar()
+    if (temPendente()) await enviar()
+    else if (!(await puxar())) await enviar()
+    // Correções de regra só podem ser gravadas pelo admin; a mudança dispara o envio automático.
+    // Com a sincronização falhando, os dados locais podem estar velhos: não corrigir em cima deles.
+    if (useNuvemStore.getState().status === 'sincronizado') {
+      useTorneioStore.getState().aplicarRegrasAtuaisTemporadas()
+    }
   } else {
     await puxar()
   }

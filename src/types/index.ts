@@ -122,6 +122,8 @@ export interface Temporada {
   nome: string
   /** Rodadas já disputadas antes de começar a usar o app (contidas na rodada importada). */
   rodadasAnteriores?: number
+  /** Versão das regras de pontuação já aplicadas aos dados (ausente = 1). */
+  versaoRegras?: number
   jogadores: JogadorTemporada[]
   rodadas: RodadaTemporada[]
   criadoEm: string

@@ -555,7 +555,8 @@ function NovaRodadaForm({
           ))}
         </div>
         <p className="text-xs text-teal-500 mt-2">
-          Pontuação sugerida: 1º=1000, 2º=750, 3º=500, 4º=400, eliminado c/ vitória=250, sem vitória=150. Deixe em branco quem não jogou.
+          Liga A: 1º=1000, 2º=750, 3º=500, 4º=400, eliminado c/ vitória=250, sem vitória=150.
+          Liga B (60%): 600, 450, 300, 240, 150, 90. Deixe em branco quem não jogou.
         </p>
       </div>
 
