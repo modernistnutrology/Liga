@@ -1,5 +1,6 @@
 import type { Temporada, JogadorTemporada, RodadaTemporada, Liga } from '../types'
 import { nanoid } from './nanoid'
+import { ATRASOS_ANTES_DO_APP, VERSAO_REGRAS_ATUAL } from './temporada'
 
 /** Dados importados da planilha oficial em 2026-10-13. */
 const DADOS: { nome: string; liga: Liga; pontos: number; rodadas: number }[] = [
@@ -49,6 +50,7 @@ export function criarTemporadaVillageSeed(): Temporada {
     nome: d.nome,
     liga: d.liga,
     rodadasJogadasOverride: d.rodadas,
+    atrasosAnteriores: ATRASOS_ANTES_DO_APP[d.nome],
     criadoEm: now,
   }))
   const rodadaImportada: RodadaTemporada = {
@@ -63,7 +65,7 @@ export function criarTemporadaVillageSeed(): Temporada {
     id: nanoid(),
     nome: 'Temporada Village — atual',
     rodadasAnteriores: 4,
-    versaoRegras: 2,
+    versaoRegras: VERSAO_REGRAS_ATUAL,
     jogadores,
     rodadas: [rodadaImportada],
     criadoEm: now,
