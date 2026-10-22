@@ -6,6 +6,7 @@ import { useTorneioStore } from '../store/torneioStore'
 import StatusBadge from '../components/torneio/StatusBadge'
 import BackupCard from '../components/BackupCard'
 import BotaoConta from '../components/BotaoConta'
+import DestaqueTemporada from '../components/DestaqueTemporada'
 import { useModoLeitura } from '../store/nuvemStore'
 import { getDemoTorneio } from '../utils/demoData'
 import { showToast } from '../components/ui/Toast'
@@ -89,6 +90,8 @@ export default function Home() {
           )}
         </div>
       </div>
+
+      <DestaqueTemporada />
 
       {/* Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
