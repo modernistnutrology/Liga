@@ -76,6 +76,8 @@ export interface JogadorTemporada {
   liga: Liga
   /** Opcional: sobrescreve a contagem de rodadas jogadas (usado em dados importados). */
   rodadasJogadasOverride?: number
+  /** Atrasos de rodadas anteriores ao app; o desconto já está nos pontos importados. */
+  atrasosAnteriores?: number
   criadoEm: string
 }
 
@@ -115,6 +117,8 @@ export interface RodadaTemporada {
   estruturada?: RodadaEstruturada
   /** Bloco de totais importado da planilha; representa as rodadas anteriores ao app. */
   importada?: boolean
+  /** Jogadores que chegaram atrasados nesta rodada (perdem PENALIDADE_ATRASO pontos). */
+  atrasos?: string[]
 }
 
 export interface Temporada {

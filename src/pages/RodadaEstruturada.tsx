@@ -7,6 +7,8 @@ import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerar
 import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
 import BotaoConta from '../components/BotaoConta'
+import AtrasosRodada from '../components/AtrasosRodada'
+import { PENALIDADE_ATRASO } from '../utils/temporada'
 
 export default function RodadaEstruturadaPage() {
   const navigate = useNavigate()
@@ -99,6 +101,12 @@ export default function RodadaEstruturadaPage() {
               ]}
         />
 
+        {(!leitura || (rodada.atrasos?.length ?? 0) > 0) && (
+          <div className="card p-4">
+            <AtrasosRodada temporada={temporada} rodada={rodada} />
+          </div>
+        )}
+
         <fieldset disabled={leitura} className="contents">
         {/* Grupos (2 ou 3) */}
         {getGrupos(estr).map((ids, i) => (
@@ -136,7 +144,7 @@ export default function RodadaEstruturadaPage() {
           />
         )}
         {!is12 && fases.faseFinal && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} onFinalizar={finalizar} />
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
         )}
 
         {/* Mata-mata — formato 12 */}
@@ -195,7 +203,7 @@ export default function RodadaEstruturadaPage() {
           </>
         )}
         {is12 && status.finaisOk && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} onFinalizar={finalizar} />
+          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
         )}
         </fieldset>
       </div>
@@ -370,12 +378,13 @@ function FaseCard({
 }
 
 function ResumoFinal({
-  estr, jogadores, finalizada, pontosGravados, onFinalizar,
+  estr, jogadores, finalizada, pontosGravados, atrasos, onFinalizar,
 }: {
   estr: RodadaEstr
   jogadores: JogadorTemporada[]
   finalizada: boolean
   pontosGravados: { jogadorId: string; pontos: number }[]
+  atrasos: string[]
   onFinalizar: (pontos: { jogadorId: string; pontos: number }[]) => void
 }) {
   // Depois de lançada, vale o que está gravado (pode ter sido editado à mão ou corrigido)
@@ -428,7 +437,12 @@ function ResumoFinal({
         <tbody>
           {ordenado.map(p => (
             <tr key={p.jogadorId} className="border-b border-teal-800/40">
-              <td className="px-4 py-2.5 text-teal-50">{porNome(p.jogadorId)}</td>
+              <td className="px-4 py-2.5 text-teal-50">
+                {porNome(p.jogadorId)}
+                {atrasos.includes(p.jogadorId) && (
+                  <span className="ml-2 text-[10px] text-red-300">atraso: −{PENALIDADE_ATRASO} no ranking</span>
+                )}
+              </td>
               <td className="px-4 py-2 text-right">
                 {editando && !finalizada ? (
                   <input

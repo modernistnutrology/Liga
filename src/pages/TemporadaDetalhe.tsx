@@ -9,7 +9,11 @@ import Modal from '../components/ui/Modal'
 import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
 import BotaoConta from '../components/BotaoConta'
 import { useModoLeitura } from '../store/nuvemStore'
-import { totalRodadas, rotuloRodada, calcularRankingTemporada, rodadaEmAndamento } from '../utils/temporada'
+import {
+  totalRodadas, rotuloRodada, calcularRankingTemporada, rodadaEmAndamento,
+  pontosLiquidosNaRodada, atrasouNaRodada, PENALIDADE_ATRASO,
+} from '../utils/temporada'
+import AtrasosRodada, { participantesDaRodada } from '../components/AtrasosRodada'
 import { showToast } from '../components/ui/Toast'
 
 type Filtro = 'todas' | 'A' | 'B'
@@ -167,6 +171,7 @@ export default function TemporadaDetalhe() {
                     <th className="px-4 py-3 text-left">Jogador</th>
                     <th className="px-3 py-3 text-center">Liga</th>
                     <th className="px-3 py-3 text-center">Rodadas</th>
+                    <th className="px-3 py-3 text-center">Atrasos</th>
                     <th className="px-4 py-3 text-right">Pontos</th>
                   </tr>
                 </thead>
@@ -184,6 +189,9 @@ export default function TemporadaDetalhe() {
                         <LigaBadge liga={l.jogador.liga} />
                       </td>
                       <td className="px-3 py-3 text-center text-teal-300">{l.rodadasJogadas}</td>
+                      <td className={`px-3 py-3 text-center ${l.atrasos > 0 ? 'text-red-300 font-semibold' : 'text-teal-600'}`}>
+                        {l.atrasos > 0 ? l.atrasos : '–'}
+                      </td>
                       <td className="px-4 py-3 text-right font-bold text-yellow-300 text-base">{l.pontos.toLocaleString('pt-BR')}</td>
                     </tr>
                   ))}
@@ -290,21 +298,28 @@ export default function TemporadaDetalhe() {
                     </button>
                     </>}
                   </summary>
-                  <div className="px-4 pb-4">
+                  <div className="px-4 pb-4 space-y-4">
                     <table className="w-full text-xs">
                       <tbody>
-                        {r.pontos.filter(p => p.pontos > 0).sort((a, b) => b.pontos - a.pontos).map(p => {
-                          const j = temporada.jogadores.find(x => x.id === p.jogadorId)
-                          return (
-                            <tr key={p.jogadorId} className="border-b border-teal-800/30">
-                              <td className="py-2 text-teal-100">{j?.nome ?? '?'}</td>
-                              <td className="py-2 text-center"><LigaBadge liga={j?.liga ?? 'A'} /></td>
-                              <td className="py-2 text-right font-bold text-yellow-300">{p.pontos}</td>
-                            </tr>
-                          )
-                        })}
+                        {participantesDaRodada(r)
+                          .map(id => ({ id, liquido: pontosLiquidosNaRodada(r, id), atrasou: atrasouNaRodada(r, id) }))
+                          .sort((a, b) => b.liquido - a.liquido)
+                          .map(({ id, liquido, atrasou }) => {
+                            const j = temporada.jogadores.find(x => x.id === id)
+                            return (
+                              <tr key={id} className="border-b border-teal-800/30">
+                                <td className="py-2 text-teal-100">
+                                  {j?.nome ?? '?'}
+                                  {atrasou && <span className="ml-2 text-[10px] text-red-300">atraso −{PENALIDADE_ATRASO}</span>}
+                                </td>
+                                <td className="py-2 text-center"><LigaBadge liga={j?.liga ?? 'A'} /></td>
+                                <td className="py-2 text-right font-bold text-yellow-300">{liquido}</td>
+                              </tr>
+                            )
+                          })}
                       </tbody>
                     </table>
+                    {!r.importada && <AtrasosRodada temporada={temporada} rodada={r} />}
                   </div>
                 </details>
               ))}
@@ -381,16 +396,32 @@ function JogadorRow({ jogador, onEdit, onRemove }: { jogador: JogadorTemporada; 
   const [nome, setNome] = useState(jogador.nome)
   const [liga, setLiga] = useState<Liga>(jogador.liga)
   const [confirmar, setConfirmar] = useState(false)
+  const [atrasosAnteriores, setAtrasosAnteriores] = useState(String(jogador.atrasosAnteriores ?? 0))
 
   if (editando) {
     return (
-      <li className="p-3 flex gap-2 items-center bg-teal-900/30">
-        <input className="input flex-1" value={nome} onChange={e => setNome(e.target.value)} />
+      <li className="p-3 flex gap-2 items-center flex-wrap bg-teal-900/30">
+        <input className="input flex-1 min-w-[140px]" value={nome} onChange={e => setNome(e.target.value)} />
         <select className="select w-auto" value={liga} onChange={e => setLiga(e.target.value as Liga)}>
           <option value="A">Liga A</option>
           <option value="B">Liga B</option>
         </select>
-        <button onClick={() => { onEdit({ nome: nome.trim() || jogador.nome, liga }); setEditando(false) }} className="btn-primary text-xs px-3 py-2">Salvar</button>
+        <label className="flex items-center gap-1.5 text-xs text-teal-300" title="Atrasos das rodadas importadas da planilha (já descontados nos pontos)">
+          Atrasos anteriores
+          <input
+            type="number" inputMode="numeric" min={0}
+            className="input w-16 text-center"
+            value={atrasosAnteriores}
+            onChange={e => setAtrasosAnteriores(e.target.value)}
+          />
+        </label>
+        <button
+          onClick={() => {
+            onEdit({ nome: nome.trim() || jogador.nome, liga, atrasosAnteriores: Math.max(0, Number(atrasosAnteriores) || 0) })
+            setEditando(false)
+          }}
+          className="btn-primary text-xs px-3 py-2"
+        >Salvar</button>
         <button onClick={() => setEditando(false)} className="btn-secondary text-xs px-3 py-2">Cancelar</button>
       </li>
     )

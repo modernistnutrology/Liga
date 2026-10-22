@@ -7,6 +7,24 @@ export interface LinhaRankingTemporada {
   jogador: JogadorTemporada
   pontos: number
   rodadasJogadas: number
+  atrasos: number
+}
+
+/** Atraso custa 100 pontos na rodada, nas duas ligas (não segue o fator de 60% da Liga B). */
+export const PENALIDADE_ATRASO = 100
+
+export function atrasouNaRodada(r: Pick<RodadaTemporada, 'atrasos'>, jogadorId: string): boolean {
+  return !!r.atrasos?.includes(jogadorId)
+}
+
+/** Pontos do jogador na rodada já com o desconto de atraso. */
+export function pontosLiquidosNaRodada(r: Pick<RodadaTemporada, 'pontos' | 'atrasos'>, jogadorId: string): number {
+  const base = r.pontos.find(p => p.jogadorId === jogadorId)?.pontos ?? 0
+  return base - (atrasouNaRodada(r, jogadorId) ? PENALIDADE_ATRASO : 0)
+}
+
+export function totalAtrasos(t: Temporada, jogador: JogadorTemporada): number {
+  return (jogador.atrasosAnteriores ?? 0) + t.rodadas.filter(r => atrasouNaRodada(r, jogador.id)).length
 }
 
 /** Ranking acumulado da temporada; empates em pontos dividem a mesma posição. */
@@ -18,14 +36,19 @@ export function calcularRankingTemporada(t: Temporada, liga?: Liga): LinhaRankin
       const numerosJogados = new Set<number>()
       let jogouImportada = false
       for (const r of t.rodadas) {
-        const p = r.pontos.find(x => x.jogadorId === j.id)
-        if (!p || p.pontos <= 0) continue
-        pontos += p.pontos
+        const base = r.pontos.find(x => x.jogadorId === j.id)?.pontos ?? 0
+        if (base <= 0 && !atrasouNaRodada(r, j.id)) continue
+        pontos += pontosLiquidosNaRodada(r, j.id)
         if (r.importada) jogouImportada = true
         else numerosJogados.add(r.numero)
       }
       const rodadasDaPlanilha = j.rodadasJogadasOverride ?? (jogouImportada ? 1 : 0)
-      return { jogador: j, pontos, rodadasJogadas: rodadasDaPlanilha + numerosJogados.size }
+      return {
+        jogador: j,
+        pontos,
+        rodadasJogadas: rodadasDaPlanilha + numerosJogados.size,
+        atrasos: totalAtrasos(t, j),
+      }
     })
     .sort((a, b) => b.pontos - a.pontos || a.jogador.nome.localeCompare(b.jogador.nome))
 

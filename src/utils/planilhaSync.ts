@@ -1,5 +1,5 @@
 import type { Temporada } from '../types'
-import { calcularRankingTemporada, rotuloRodada } from './temporada'
+import { calcularRankingTemporada, rotuloRodada, pontosLiquidosNaRodada, atrasouNaRodada } from './temporada'
 
 export interface PlanilhaConfig {
   url: string
@@ -51,16 +51,18 @@ export function montarTabelaPlanilha(t: Temporada) {
     ...importadas.map(r => ({ titulo: rotuloRodada(t, r).replace(/^Rodadas? /, 'R'), rodadas: [r] })),
     ...numeros.map(n => ({ titulo: `R${n}`, rodadas: t.rodadas.filter(r => !r.importada && r.numero === n) })),
   ]
-  const cabecalho = ['Pos.', 'Jogador', 'Liga', 'Rodadas jogadas', 'Total', ...colunas.map(c => c.titulo)]
+  const cabecalho = ['Pos.', 'Jogador', 'Liga', 'Rodadas jogadas', 'Atrasos', 'Total', ...colunas.map(c => c.titulo)]
   const linhas = calcularRankingTemporada(t).map(l => [
     l.pos,
     l.jogador.nome,
     l.jogador.liga,
     l.rodadasJogadas,
+    l.atrasos || '',
     l.pontos,
-    ...colunas.map(c =>
-      c.rodadas.reduce((soma, r) => soma + (r.pontos.find(p => p.jogadorId === l.jogador.id)?.pontos ?? 0), 0) || ''
-    ),
+    ...colunas.map(c => {
+      const jogou = c.rodadas.some(r => r.pontos.some(p => p.jogadorId === l.jogador.id && p.pontos > 0) || atrasouNaRodada(r, l.jogador.id))
+      return jogou ? c.rodadas.reduce((soma, r) => soma + pontosLiquidosNaRodada(r, l.jogador.id), 0) : ''
+    }),
   ])
   return {
     titulo: `${t.nome} — Classificação geral (app)`,

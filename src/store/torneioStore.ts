@@ -217,6 +217,7 @@ interface TorneioStore {
   removerRodadaTemporada: (temporadaId: string, rodadaId: string) => void
   importarTemporadaVillage: () => string
   importarDados: (dados: { torneios: Torneio[]; temporadas: Temporada[] }, modo: 'substituir' | 'mesclar') => void
+  alternarAtraso: (temporadaId: string, rodadaId: string, jogadorId: string) => void
   /** Atualiza temporadas gravadas com regras de pontuação antigas; só o admin consegue gravar. */
   aplicarRegrasAtuaisTemporadas: () => void
   criarRodadaEstruturada: (temporadaId: string, estr: RodadaEstruturada, nome?: string) => string | null
@@ -350,6 +351,20 @@ export const useTorneioStore = create<TorneioStore>()(
         const nova = criarTemporadaVillageSeed()
         set(s => ({ temporadas: [...s.temporadas, nova] }))
         return nova.id
+      },
+      alternarAtraso: (temporadaId, rodadaId, jogadorId) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => t.id !== temporadaId ? t : {
+            ...t,
+            atualizadoEm: new Date().toISOString(),
+            rodadas: t.rodadas.map(r => {
+              if (r.id !== rodadaId) return r
+              const atuais = r.atrasos ?? []
+              const atrasos = atuais.includes(jogadorId) ? atuais.filter(id => id !== jogadorId) : [...atuais, jogadorId]
+              return { ...r, atrasos }
+            }),
+          }),
+        }))
       },
       aplicarRegrasAtuaisTemporadas: () => {
         set(s => {
