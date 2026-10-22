@@ -225,6 +225,11 @@ function perdedoresJogo(j: JogoRodada | undefined): string[] | null {
   return (j.placar1 ?? 0) > (j.placar2 ?? 0) ? [...j.dupla2] : [...j.dupla]
 }
 
+/** Placar 0 x 0 na disputa de 3º lugar significa que ela não foi jogada: os dois ficam em 3º. */
+export function disputa3NaoJogada(jogo: JogoRodada | undefined): boolean {
+  return !!jogo && jogo.finalizado && jogo.placar1 === 0 && jogo.placar2 === 0
+}
+
 /** A Liga B vale 60% da tabela da Liga A. */
 export const FATOR_PONTOS_LIGA: Record<Liga, number> = { A: 1, B: 0.6 }
 
@@ -250,12 +255,14 @@ export function calcularPontosRodada(
     const disputa3 = estr.jogos.find(j => j.fase === 'Disputa 3º lugar')
     const campeoes = vencedoresJogo(final)
     const vice = perdedoresJogo(final)
-    const terceiros = vencedoresJogo(disputa3)
-    const quartos = perdedoresJogo(disputa3)
     campeoes?.forEach(id => resultado.push({ jogadorId: id, pontos: 1000 }))
     vice?.forEach(id => resultado.push({ jogadorId: id, pontos: 750 }))
-    terceiros?.forEach(id => resultado.push({ jogadorId: id, pontos: 500 }))
-    quartos?.forEach(id => resultado.push({ jogadorId: id, pontos: 400 }))
+    if (disputa3NaoJogada(disputa3)) {
+      [...disputa3!.dupla, ...disputa3!.dupla2].forEach(id => resultado.push({ jogadorId: id, pontos: 500 }))
+    } else {
+      vencedoresJogo(disputa3)?.forEach(id => resultado.push({ jogadorId: id, pontos: 500 }))
+      perdedoresJogo(disputa3)?.forEach(id => resultado.push({ jogadorId: id, pontos: 400 }))
+    }
   }
 
   // Eliminados na fase 1 → 250 (c/vit) ou 150 (s/vit)

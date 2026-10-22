@@ -185,7 +185,7 @@ export default function RodadaEstruturadaPage() {
             />
             <MatchCard
               titulo="Disputa 3º lugar"
-              subtitulo="Perdedores das semifinais"
+              subtitulo="Perdedores das semifinais. Não jogaram? Lance 0 x 0 e os quatro ficam em 3º."
               jogo={estr.jogos.find(j => j.fase === 'Disputa 3º lugar')!}
               nome={nome}
               onPlacar={updateJogo}
