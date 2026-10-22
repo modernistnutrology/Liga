@@ -36,7 +36,7 @@ export default function DestaqueTemporada() {
             <>
               <span className="opacity-50">·</span>
               <Crown size={12} className="text-yellow-300" />
-              <span>{lider.jogador.nome} ({lider.pontos.toLocaleString('pt-BR')} pts)</span>
+              <span>{lider.pontos.toLocaleString('pt-BR')} pts</span>
             </>
           )}
         </div>
