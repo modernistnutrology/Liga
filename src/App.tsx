@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 import { useTorneioStore } from './store/torneioStore'
 import { useModoLeitura } from './store/nuvemStore'
 import { iniciarSincronizacao } from './lib/sincronizacao'
-import BarraNuvem from './components/BarraNuvem'
 import Layout from './components/layout/Layout'
 import Home from './pages/Home'
 import NovoTorneio from './pages/NovoTorneio'
@@ -43,7 +42,6 @@ export default function App() {
     <BrowserRouter>
       <DarkModeSync />
       <ToastContainer />
-      <BarraNuvem />
       <Routes>
         <Route path="/" element={<HomeWrapper />} />
         <Route path="/novo-torneio" element={<SoAdmin voltarPara={() => '/'}><NovoTorneioWrapper /></SoAdmin>} />

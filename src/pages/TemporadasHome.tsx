@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Trophy, Trash2, ChevronRight, Users, Calendar, Externa
 import { useTorneioStore } from '../store/torneioStore'
 import { showToast } from '../components/ui/Toast'
 import BackupCard from '../components/BackupCard'
+import BotaoConta from '../components/BotaoConta'
 import { totalRodadas } from '../utils/temporada'
 import { useModoLeitura } from '../store/nuvemStore'
 
@@ -43,6 +44,7 @@ export default function TemporadasHome() {
             <ExternalLink size={14} />
             <span className="hidden sm:inline">Planilha</span>
           </button>
+          <BotaoConta />
         </div>
 
         {!leitura && <div className="card p-4">
@@ -59,7 +61,7 @@ export default function TemporadasHome() {
               <Plus size={16} /> Criar
             </button>
           </div>
-          <div className="mt-3 pt-3 border-t border-teal-800/60 flex items-center justify-between gap-3 flex-wrap">
+          {!temporadas.some(t => t.rodadas.some(r => r.importada)) && <div className="mt-3 pt-3 border-t border-teal-800/60 flex items-center justify-between gap-3 flex-wrap">
             <p className="text-xs text-teal-400">
               Ou importe a temporada atual do Village (37 jogadores, pontos e rodadas da planilha).
             </p>
@@ -73,7 +75,7 @@ export default function TemporadasHome() {
             >
               <Download size={14} /> Importar temporada atual
             </button>
-          </div>
+          </div>}
         </div>}
 
         {temporadas.length === 0 ? (

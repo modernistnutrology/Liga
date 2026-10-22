@@ -5,7 +5,7 @@ import { entrarAdmin, sairAdmin } from '../lib/sincronizacao'
 import Modal from './ui/Modal'
 import { showToast } from './ui/Toast'
 
-export default function BarraNuvem() {
+export default function BotaoConta() {
   const { configurada, sessaoVerificada, emailAdmin, status, erro, ultimaSincronizacao } = useNuvemStore()
   const [aberto, setAberto] = useState(false)
 
@@ -23,14 +23,12 @@ export default function BarraNuvem() {
     <>
       <button
         onClick={() => setAberto(true)}
-        className="fixed z-40 right-3 flex items-center gap-2 rounded-full border border-teal-700 bg-teal-900/95 backdrop-blur px-3 py-2 text-xs shadow-lg hover:border-yellow-400/50 transition-colors"
-        style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        className="flex-shrink-0 flex items-center gap-1.5 rounded-lg border border-teal-800 bg-teal-900/60 px-2.5 py-2 text-xs hover:border-yellow-400/40 transition-colors"
+        title={`${admin ? 'Administrador' : 'Somente leitura'} · ${visual.texto}`}
       >
-        {admin ? <ShieldCheck size={14} className="text-yellow-300" /> : <Eye size={14} className="text-teal-300" />}
-        <span className="text-teal-100 font-medium">{admin ? 'Admin' : 'Somente leitura'}</span>
-        <span className="w-px h-3 bg-teal-700" />
+        {admin ? <ShieldCheck size={15} className="text-yellow-300" /> : <Eye size={15} className="text-teal-300" />}
+        <span className="text-teal-100 font-medium hidden sm:inline">{admin ? 'Admin' : 'Somente leitura'}</span>
         <visual.Icone size={13} className={`${visual.cor} ${visual.girar ? 'animate-spin' : ''}`} />
-        <span className={`${visual.cor} hidden sm:inline`}>{visual.texto}</span>
       </button>
 
       {aberto && (

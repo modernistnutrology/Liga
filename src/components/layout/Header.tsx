@@ -1,6 +1,7 @@
 import { Menu, Sun, Moon, ArrowLeft, Home as HomeIcon } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTorneioStore } from '../../store/torneioStore'
+import BotaoConta from '../BotaoConta'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -71,6 +72,7 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
       )}
 
       <div className="ml-auto flex items-center gap-1">
+        <BotaoConta />
         <button
           onClick={toggleDarkMode}
           className="p-2 rounded-lg text-teal-300 hover:text-yellow-300 hover:bg-teal-800 transition-colors"

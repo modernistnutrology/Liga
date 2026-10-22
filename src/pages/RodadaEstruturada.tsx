@@ -6,6 +6,7 @@ import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporad
 import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
+import BotaoConta from '../components/BotaoConta'
 
 export default function RodadaEstruturadaPage() {
   const navigate = useNavigate()
@@ -80,6 +81,7 @@ export default function RodadaEstruturadaPage() {
               <Trophy size={24} /> RODADA {rodada.numero}{rodada.nome ? ` — ${rodada.nome}` : ''}
             </h1>
           </div>
+          <BotaoConta />
         </div>
 
         <StepBar

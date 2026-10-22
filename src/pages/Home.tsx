@@ -5,6 +5,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import StatusBadge from '../components/torneio/StatusBadge'
 import BackupCard from '../components/BackupCard'
+import BotaoConta from '../components/BotaoConta'
 import { useModoLeitura } from '../store/nuvemStore'
 import { getDemoTorneio } from '../utils/demoData'
 import { showToast } from '../components/ui/Toast'
@@ -74,6 +75,7 @@ export default function Home() {
                 Gerencie ligas e torneios com duplas, sorteios e chaveamento em tempo real
               </p>
             </div>
+            <BotaoConta />
           </div>
 
           {/* Inline stats */}

@@ -7,6 +7,7 @@ import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
 import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
+import BotaoConta from '../components/BotaoConta'
 import { useModoLeitura } from '../store/nuvemStore'
 import { totalRodadas, rotuloRodada, calcularRankingTemporada, rodadaEmAndamento } from '../utils/temporada'
 import { showToast } from '../components/ui/Toast'
@@ -101,6 +102,7 @@ export default function TemporadaDetalhe() {
             <ExternalLink size={14} className="text-yellow-300" />
             <span className="hidden sm:inline text-teal-200">Planilha</span>
           </a>
+          <BotaoConta />
         </div>
 
         {/* Estatísticas */}

@@ -1,3 +1,4 @@
+import BotaoConta from '../components/BotaoConta'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Award, RefreshCw, ArrowLeft, ExternalLink, Trophy } from 'lucide-react'
@@ -132,6 +133,7 @@ export default function RankingTemporada() {
               RANKING DA TEMPORADA
             </h1>
           </div>
+          <BotaoConta />
         </div>
 
         {/* Stats */}
