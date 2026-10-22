@@ -164,35 +164,35 @@ export default function TemporadaDetalhe() {
             <div className="p-8 text-center text-teal-400 text-sm">Sem jogadores nessa liga.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs sm:text-sm">
                 <thead>
-                  <tr className="border-b border-teal-800 text-xs text-teal-300 uppercase">
-                    <th className="px-4 py-3 text-left">Pos</th>
-                    <th className="px-4 py-3 text-left">Jogador</th>
-                    <th className="px-3 py-3 text-center">Liga</th>
-                    <th className="px-3 py-3 text-center">Rodadas</th>
-                    <th className="px-3 py-3 text-center">Atrasos</th>
-                    <th className="px-4 py-3 text-right">Pontos</th>
+                  <tr className="border-b border-teal-800 text-[10px] sm:text-xs text-teal-300 uppercase">
+                    <th className="pl-3 pr-1 sm:px-4 py-2.5 sm:py-3 text-left">Pos</th>
+                    <th className="px-1.5 sm:px-4 py-2.5 sm:py-3 text-left">Jogador</th>
+                    <th className="px-1 sm:px-3 py-2.5 sm:py-3 text-center">Liga</th>
+                    <th className="px-1 sm:px-3 py-2.5 sm:py-3 text-center"><span className="sm:hidden">Rod.</span><span className="hidden sm:inline">Rodadas</span></th>
+                    <th className="px-1 sm:px-3 py-2.5 sm:py-3 text-center"><span className="sm:hidden">Atr.</span><span className="hidden sm:inline">Atrasos</span></th>
+                    <th className="pl-1 pr-3 sm:px-4 py-2.5 sm:py-3 text-right"><span className="sm:hidden">Pts</span><span className="hidden sm:inline">Pontos</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {ranking.map(l => (
                     <tr key={l.jogador.id} className="border-b border-teal-800/50 hover:bg-teal-900/40">
-                      <td className="px-4 py-3">
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                      <td className="pl-3 pr-1 sm:px-4 py-2 sm:py-3">
+                        <span className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[11px] sm:text-xs font-bold
                           ${l.pos === 1 ? 'bg-yellow-400 text-teal-950' : l.pos === 2 ? 'bg-teal-500 text-white' : l.pos === 3 ? 'bg-yellow-600 text-white' : 'bg-teal-800 text-teal-300'}`}>
                           {l.pos}
                         </span>
                       </td>
-                      <td className="px-4 py-3 font-medium text-teal-50">{l.jogador.nome}</td>
-                      <td className="px-3 py-3 text-center">
+                      <td className="px-1.5 sm:px-4 py-2 sm:py-3 font-medium text-teal-50 leading-tight">{l.jogador.nome}</td>
+                      <td className="px-1 sm:px-3 py-2 sm:py-3 text-center">
                         <LigaBadge liga={l.jogador.liga} />
                       </td>
-                      <td className="px-3 py-3 text-center text-teal-300">{l.rodadasJogadas}</td>
-                      <td className={`px-3 py-3 text-center ${l.atrasos > 0 ? 'text-red-300 font-semibold' : 'text-teal-600'}`}>
+                      <td className="px-1 sm:px-3 py-2 sm:py-3 text-center text-teal-300">{l.rodadasJogadas}</td>
+                      <td className={`px-1 sm:px-3 py-2 sm:py-3 text-center ${l.atrasos > 0 ? 'text-red-300 font-semibold' : 'text-teal-600'}`}>
                         {l.atrasos > 0 ? l.atrasos : '–'}
                       </td>
-                      <td className="px-4 py-3 text-right font-bold text-yellow-300 text-base">{l.pontos.toLocaleString('pt-BR')}</td>
+                      <td className="pl-1 pr-3 sm:px-4 py-2 sm:py-3 text-right font-bold text-yellow-300 text-sm sm:text-base whitespace-nowrap">{l.pontos.toLocaleString('pt-BR')}</td>
                     </tr>
                   ))}
                 </tbody>
