@@ -27,6 +27,32 @@ export function separarLista(texto: string): string[] {
   return partes.map(limparLinha).filter(l => /[a-zA-ZÀ-ÿ]/.test(l))
 }
 
+const PALAVRAS_DE_CABECALHO = new Set([
+  'liga', 'lista', 'rodada', 'etapa', 'jogos', 'jogo', 'confirmados', 'confirmacao', 'horario', 'hoje', 'amanha',
+  'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado', 'domingo', 'feira', 'grupo', 'grupos',
+])
+
+/** Linhas como "Liga A – sábado 25/10" ou "Lista de confirmados" não são jogadores. */
+export function pareceCabecalho(linha: string): boolean {
+  if (/\d/.test(linha)) return true
+  const palavras = normalizarNome(linha).split(' ').filter(Boolean)
+  return palavras.length > 4 || palavras.some(p => PALAVRAS_DE_CABECALHO.has(p))
+}
+
+const MINUSCULAS = new Set(['da', 'de', 'do', 'das', 'dos', 'e'])
+
+/** "fulano de TAL" → "Fulano de Tal" */
+export function formatarNomeNovo(linha: string): string {
+  return linha
+    .trim()
+    .split(/\s+/)
+    .map((p, i) => {
+      const min = p.toLowerCase()
+      return i > 0 && MINUSCULAS.has(min) ? min : min.charAt(0).toUpperCase() + min.slice(1)
+    })
+    .join(' ')
+}
+
 function levenshtein(a: string, b: string): number {
   const linha = Array.from({ length: b.length + 1 }, (_, i) => i)
   for (let i = 1; i <= a.length; i++) {

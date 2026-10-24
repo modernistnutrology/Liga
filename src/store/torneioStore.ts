@@ -209,7 +209,8 @@ interface TorneioStore {
   criarTemporada: (nome: string) => string
   renomearTemporada: (id: string, nome: string) => void
   excluirTemporada: (id: string) => void
-  adicionarJogadorTemporada: (temporadaId: string, nome: string, liga: Liga) => void
+  /** Retorna o id do jogador criado. */
+  adicionarJogadorTemporada: (temporadaId: string, nome: string, liga: Liga) => string
   editarJogadorTemporada: (temporadaId: string, jogadorId: string, data: Partial<JogadorTemporada>) => void
   removerJogadorTemporada: (temporadaId: string, jogadorId: string) => void
   adicionarRodadaTemporada: (temporadaId: string, rodada: Omit<RodadaTemporada, 'id' | 'numero'>) => void
@@ -303,6 +304,7 @@ export const useTorneioStore = create<TorneioStore>()(
             ? { ...t, jogadores: [...t.jogadores, j], atualizadoEm: new Date().toISOString() }
             : t),
         }))
+        return j.id
       },
       editarJogadorTemporada: (temporadaId, jogadorId, data) => {
         set(s => ({

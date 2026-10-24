@@ -583,18 +583,19 @@ function SetupNovaRodada({
           <ImportarListaJogadores
             jogadores={temporada.jogadores}
             ligaPadrao={liga}
-            onCadastrar={(nomeNovo, ligaNovo) => {
-              adicionarJogadorTemporada(temporada.id, nomeNovo, ligaNovo)
-              showToast(`${nomeNovo} cadastrado na Liga ${ligaNovo}`, 'success')
-            }}
-            onAplicar={ids => {
-              const ligas = ids.map(id => temporada.jogadores.find(j => j.id === id)?.liga)
-              const contaA = ligas.filter(l => l === 'A').length
-              setLiga(contaA >= ids.length - contaA ? 'A' : 'B')
-              const n = ids.length
+            onAplicar={(ids, novos, ligaNovos) => {
+              const idsNovos = novos.map(nomeNovo => adicionarJogadorTemporada(temporada.id, nomeNovo, ligaNovos))
+              const todos = [...ids, ...idsNovos]
+              setLiga(ligaNovos)
+              const n = todos.length
               if (n === 8 || n === 12 || n === 16) setTamanho(n)
-              setSelecionados(ids)
-              showToast(`${n} jogador(es) selecionados pela lista`, 'success')
+              setSelecionados(todos)
+              showToast(
+                novos.length > 0
+                  ? `${n} selecionados · ${novos.length} cadastrado(s) na Liga ${ligaNovos}`
+                  : `${n} jogador(es) selecionados pela lista`,
+                'success'
+              )
             }}
           />
 
