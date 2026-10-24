@@ -95,7 +95,10 @@ export default function ImportarListaJogadores({
             const visual =
               r.acao.tipo === 'ignorar' ? { Icone: EyeOff, cor: 'text-teal-500', texto: 'Ignorado' } :
               r.acao.tipo === 'novo' ? { Icone: UserPlus, cor: 'text-yellow-300', texto: `Novo jogador (Liga ${ligaNovos})` } :
-              r.acao.tipo === 'pendente' ? { Icone: TriangleAlert, cor: 'text-yellow-300', texto: 'Mais de uma opção, escolha' } :
+              r.acao.tipo === 'pendente' ? {
+                Icone: TriangleAlert, cor: 'text-yellow-300',
+                texto: r.rec.status === 'sobrenome_diferente' ? 'Mesmo nome, sobrenome diferente' : 'Mais de uma opção, escolha',
+              } :
               repetido ? { Icone: TriangleAlert, cor: 'text-red-400', texto: 'Repetido na lista' } :
               r.escolhidoNaMao || r.rec.status === 'certo' ? { Icone: Check, cor: 'text-emerald-400', texto: 'Reconhecido' } :
               { Icone: Check, cor: 'text-yellow-300', texto: 'Nome parecido, confira' }
@@ -107,6 +110,27 @@ export default function ImportarListaJogadores({
                   <span className="text-teal-100 font-medium truncate">"{r.linha}"</span>
                   <span className={`ml-auto flex-shrink-0 ${visual.cor}`}>{visual.texto}</span>
                 </div>
+                {r.acao.tipo === 'pendente' && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {r.rec.candidatos.map(j => (
+                      <button
+                        key={j.id}
+                        onClick={() => setEscolhas(prev => ({ ...prev, [i]: j.id }))}
+                        className="px-2.5 py-1 rounded-full text-xs border border-teal-700 text-teal-100 hover:border-yellow-400/50"
+                      >
+                        É {j.nome}
+                      </button>
+                    ))}
+                    {r.rec.status === 'sobrenome_diferente' && (
+                      <button
+                        onClick={() => setEscolhas(prev => ({ ...prev, [i]: NOVO }))}
+                        className="px-2.5 py-1 rounded-full text-xs border border-yellow-400/50 text-yellow-300 hover:bg-yellow-400/10 flex items-center gap-1"
+                      >
+                        <UserPlus size={12} /> Cadastrar {formatarNomeNovo(r.linha)}
+                      </button>
+                    )}
+                  </div>
+                )}
                 <select
                   className="select w-full text-sm py-1.5"
                   value={valor}
@@ -137,7 +161,7 @@ export default function ImportarListaJogadores({
                 </p>
               )}
               {pendentes > 0 && (
-                <p className="text-xs text-yellow-300">{pendentes} linha(s) com mais de uma opção: escolha o jogador para continuar.</p>
+                <p className="text-xs text-yellow-300">{pendentes} linha(s) para confirmar: escolha quem é ou cadastre como novo.</p>
               )}
               <div className="flex justify-end">
                 <button

@@ -83,7 +83,7 @@ function semelhanca(digitado: string, cadastrado: string): number {
 const MINIMO = 0.75
 const MARGEM_EMPATE = 0.05
 
-export type StatusReconhecimento = 'certo' | 'parecido' | 'duvida' | 'nao_encontrado'
+export type StatusReconhecimento = 'certo' | 'parecido' | 'duvida' | 'sobrenome_diferente' | 'nao_encontrado'
 
 export interface Reconhecimento {
   status: StatusReconhecimento
@@ -100,6 +100,14 @@ export function reconhecerNome(digitado: string, jogadores: JogadorTemporada[]):
     .map(j => ({ j, s: semelhanca(alvo, normalizarNome(j.nome)) }))
     .filter(x => x.s >= MINIMO)
     .sort((a, b) => b.s - a.s)
+
+  // Digitou nome e sobrenome, mas nenhum cadastrado confere no sobrenome: "Pedro Henrique" x "Pedro",
+  // "João Silva" x "João Perly". Pode ser outra pessoa, então pergunta em vez de assumir.
+  const tokens = alvo.split(' ')
+  if (tokens.length >= 2 && !pontuados.some(x => normalizarNome(x.j.nome).split(' ').length >= 2)) {
+    const mesmoPrimeiroNome = jogadores.filter(j => normalizarNome(j.nome).split(' ')[0] === tokens[0])
+    if (mesmoPrimeiroNome.length > 0) return { status: 'sobrenome_diferente', jogadorId: null, candidatos: mesmoPrimeiroNome }
+  }
 
   if (pontuados.length === 0) return { status: 'nao_encontrado', jogadorId: null, candidatos: [] }
   const [melhor, segundo] = pontuados
