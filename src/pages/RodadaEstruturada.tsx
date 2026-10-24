@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil } from 'lucide-react'
+import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil, Check } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
 import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata } from '../utils/rodadaEstruturada'
@@ -8,6 +8,7 @@ import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
 import BotaoConta from '../components/BotaoConta'
 import AtrasosRodada from '../components/AtrasosRodada'
+import ImportarListaJogadores from '../components/ImportarListaJogadores'
 
 const TAMANHOS_RODADA = [8, 12, 16] as const
 type TamanhoRodada = typeof TAMANHOS_RODADA[number]
@@ -500,7 +501,9 @@ function SetupNovaRodada({
   const [selecionados, setSelecionados] = useState<string[]>([])
   const [nome, setNome] = useState('')
 
-  const candidatos = temporada.jogadores.filter(j => j.liga === liga)
+  const adicionarJogadorTemporada = useTorneioStore(s => s.adicionarJogadorTemporada)
+  // Quem veio pela lista de outra liga continua visível para poder ser desmarcado
+  const candidatos = temporada.jogadores.filter(j => j.liga === liga || selecionados.includes(j.id))
 
   function toggle(id: string) {
     setSelecionados(prev => prev.includes(id)
@@ -577,6 +580,24 @@ function SetupNovaRodada({
             </div>
           </div>
 
+          <ImportarListaJogadores
+            jogadores={temporada.jogadores}
+            ligaPadrao={liga}
+            onCadastrar={(nomeNovo, ligaNovo) => {
+              adicionarJogadorTemporada(temporada.id, nomeNovo, ligaNovo)
+              showToast(`${nomeNovo} cadastrado na Liga ${ligaNovo}`, 'success')
+            }}
+            onAplicar={ids => {
+              const ligas = ids.map(id => temporada.jogadores.find(j => j.id === id)?.liga)
+              const contaA = ligas.filter(l => l === 'A').length
+              setLiga(contaA >= ids.length - contaA ? 'A' : 'B')
+              const n = ids.length
+              if (n === 8 || n === 12 || n === 16) setTamanho(n)
+              setSelecionados(ids)
+              showToast(`${n} jogador(es) selecionados pela lista`, 'success')
+            }}
+          />
+
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm text-teal-200 font-semibold">Selecione {tamanho} jogadores da Liga {liga}</h3>
@@ -596,7 +617,9 @@ function SetupNovaRodada({
                     onClick={() => toggle(j.id)}
                     className={`text-left p-2.5 rounded-lg border transition-colors text-sm ${sel ? 'bg-yellow-400/15 border-yellow-400/40 text-yellow-300' : 'border-teal-800 text-teal-200 hover:border-teal-600'}`}
                   >
-                    {sel ? '✓ ' : ''}{j.nome}
+                    {sel && <Check size={13} className="inline mr-1 -mt-0.5" />}
+                    {j.nome}
+                    {j.liga !== liga && <span className="ml-1 text-[10px] text-red-300">(Liga {j.liga})</span>}
                   </button>
                 )
               })}
