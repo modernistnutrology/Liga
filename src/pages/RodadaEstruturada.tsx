@@ -3,11 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
-import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado } from '../utils/rodadaEstruturada'
+import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
 import BotaoConta from '../components/BotaoConta'
 import AtrasosRodada from '../components/AtrasosRodada'
+
+const TAMANHOS_RODADA = [8, 12, 16] as const
+type TamanhoRodada = typeof TAMANHOS_RODADA[number]
 import { PENALIDADE_ATRASO } from '../utils/temporada'
 
 export default function RodadaEstruturadaPage() {
@@ -50,7 +53,7 @@ export default function RodadaEstruturadaPage() {
     if (!estr) return
     const nextEstr = gerarFaseFinal(estr)
     atualizarRodadaEstruturada(temporada!.id, rodada!.id, nextEstr)
-    showToast(getGrupos(estr).length === 3 ? 'Semifinais geradas!' : 'Fase Final gerada!', 'success')
+    showToast(temMataMata(estr) ? 'Semifinais geradas!' : 'Fase Final gerada!', 'success')
   }
 
   function avancarFinais() {
@@ -68,7 +71,8 @@ export default function RodadaEstruturadaPage() {
   }
 
   const status = statusDetalhado(estr)
-  const is12 = getGrupos(estr).length === 3
+  const mataMata = temMataMata(estr)
+  const is16 = getGrupos(estr).length === 4
 
   return (
     <div className="min-h-screen bg-teal-950 safe-top">
@@ -87,7 +91,7 @@ export default function RodadaEstruturadaPage() {
         </div>
 
         <StepBar
-          steps={is12
+          steps={mataMata
             ? [
                 ...status.fasesGrupos.grupos.map((ok, i) => ({ label: nomeGrupo(i), ok })),
                 { label: 'Semis', ok: status.semisOk },
@@ -118,12 +122,12 @@ export default function RodadaEstruturadaPage() {
             nome={nome}
             onPlacar={updateJogo}
             ranking={calcularRankingFase(estr.jogos, nomeGrupo(i), ids)}
-            classificados={getGrupos(estr).length === 2 ? 2 : 1}
+            classificados={getGrupos(estr).length === 3 ? 1 : 2}
           />
         ))}
 
         {/* Fase Final — formato 8 (rodízio) */}
-        {!is12 && fases.todosGrupos && !estr.faseFinalIds && (
+        {!mataMata && fases.todosGrupos && !estr.faseFinalIds && (
           <div className="card p-6 text-center">
             <p className="text-teal-200 mb-3">Fase 1 completa! Gerar Fase Final com os 4 classificados.</p>
             <button onClick={avancarFaseFinal} className="btn-primary flex items-center gap-2 mx-auto">
@@ -131,7 +135,7 @@ export default function RodadaEstruturadaPage() {
             </button>
           </div>
         )}
-        {!is12 && estr.faseFinalIds && (
+        {!mataMata && estr.faseFinalIds && (
           <FaseCard
             titulo="Fase Final"
             jogos={estr.jogos.filter(j => j.fase === 'Fase Final')}
@@ -143,39 +147,41 @@ export default function RodadaEstruturadaPage() {
             destacado
           />
         )}
-        {!is12 && fases.faseFinal && (
+        {!mataMata && fases.faseFinal && (
           <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
         )}
 
         {/* Mata-mata — formato 12 */}
-        {is12 && fases.todosGrupos && !status.temSemis && (
+        {mataMata && fases.todosGrupos && !status.temSemis && (
           <div className="card p-6 text-center">
             <p className="text-teal-200 mb-2">Fase 1 completa! Gerar semifinais com os 8 classificados:</p>
-            <p className="text-xs text-teal-400 mb-3">3 primeiros + 3 segundos + 2 melhores terceiros</p>
+            <p className="text-xs text-teal-400 mb-3">
+              {is16 ? '4 primeiros + 4 segundos' : '3 primeiros + 3 segundos + 2 melhores terceiros'}
+            </p>
             <button onClick={avancarFaseFinal} className="btn-primary flex items-center gap-2 mx-auto">
               <Shuffle size={16} /> Gerar Semifinais
             </button>
           </div>
         )}
-        {is12 && status.temSemis && (
+        {mataMata && status.temSemis && (
           <>
             <MatchCard
               titulo="Semi 1"
-              subtitulo="2 melhores 1ºs lugares vs 2 melhores 3ºs lugares"
+              subtitulo={is16 ? '2 melhores 1ºs vs 2 piores 2ºs' : '2 melhores 1ºs lugares vs 2 melhores 3ºs lugares'}
               jogo={estr.jogos.find(j => j.fase === 'Semi 1')!}
               nome={nome}
               onPlacar={updateJogo}
             />
             <MatchCard
               titulo="Semi 2"
-              subtitulo="3º melhor 1º + melhor 2º  vs  2º + 3º melhores 2ºs"
+              subtitulo={is16 ? 'Outros dois 1ºs vs 2 melhores 2ºs' : '3º melhor 1º + melhor 2º  vs  2º + 3º melhores 2ºs'}
               jogo={estr.jogos.find(j => j.fase === 'Semi 2')!}
               nome={nome}
               onPlacar={updateJogo}
             />
           </>
         )}
-        {is12 && status.semisOk && !status.temFinais && (
+        {mataMata && status.semisOk && !status.temFinais && (
           <div className="card p-6 text-center">
             <p className="text-teal-200 mb-3">Semis finalizadas! Gerar Final e Disputa de 3º lugar.</p>
             <button onClick={avancarFinais} className="btn-primary flex items-center gap-2 mx-auto">
@@ -183,7 +189,7 @@ export default function RodadaEstruturadaPage() {
             </button>
           </div>
         )}
-        {is12 && status.temFinais && (
+        {mataMata && status.temFinais && (
           <>
             <MatchCard
               titulo="FINAL"
@@ -202,7 +208,7 @@ export default function RodadaEstruturadaPage() {
             />
           </>
         )}
-        {is12 && status.finaisOk && (
+        {mataMata && status.finaisOk && (
           <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
         )}
         </fieldset>
@@ -490,7 +496,7 @@ function SetupNovaRodada({
   const navigate = useNavigate()
   void navigate
   const [liga, setLiga] = useState<Liga>('A')
-  const [tamanho, setTamanho] = useState<8 | 12>(8)
+  const [tamanho, setTamanho] = useState<TamanhoRodada>(8)
   const [selecionados, setSelecionados] = useState<string[]>([])
   const [nome, setNome] = useState('')
 
@@ -502,7 +508,7 @@ function SetupNovaRodada({
       : prev.length >= tamanho ? prev : [...prev, id])
   }
 
-  function trocarTamanho(novo: 8 | 12) {
+  function trocarTamanho(novo: TamanhoRodada) {
     setTamanho(novo)
     setSelecionados(prev => prev.slice(0, novo))
   }
@@ -513,7 +519,7 @@ function SetupNovaRodada({
       return
     }
     const shuffled = shuffle(selecionados)
-    const nGrupos = tamanho === 8 ? 2 : 3
+    const nGrupos = tamanho / 4
     const grupos: string[][] = []
     for (let i = 0; i < nGrupos; i++) {
       grupos.push(shuffled.slice(i * 4, (i + 1) * 4))
@@ -553,8 +559,16 @@ function SetupNovaRodada({
             <div>
               <label className="text-xs text-teal-300 uppercase tracking-wider">Formato</label>
               <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden mt-1 w-full">
-                <button onClick={() => trocarTamanho(8)} className={`flex-1 px-3 py-2 text-sm ${tamanho === 8 ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>8 (2 grupos)</button>
-                <button onClick={() => trocarTamanho(12)} className={`flex-1 px-3 py-2 text-sm ${tamanho === 12 ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}>12 (3 grupos)</button>
+                {TAMANHOS_RODADA.map(n => (
+                  <button
+                    key={n}
+                    onClick={() => trocarTamanho(n)}
+                    className={`flex-1 px-2 py-1.5 leading-tight ${tamanho === n ? 'bg-yellow-400 text-teal-950' : 'text-teal-200'}`}
+                  >
+                    <span className="block text-sm font-semibold">{n}</span>
+                    <span className="block text-[10px] opacity-80">{n / 4} grupos</span>
+                  </button>
+                ))}
               </div>
             </div>
             <div>

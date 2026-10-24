@@ -94,7 +94,7 @@ export interface JogoRodada {
 
 export interface RodadaEstruturada {
   liga: Liga
-  jogadoresIds: string[] // 8 ou 12 jogadores
+  jogadoresIds: string[] // 8, 12 ou 16 jogadores
   /** 2 ou 3 grupos de 4 jogadores (nova estrutura) */
   grupos?: string[][]
   /** @deprecated usar grupos. Mantido para rodadas antigas. */

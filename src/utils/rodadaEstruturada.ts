@@ -170,13 +170,40 @@ export function gerarFaseFinal(estr: RodadaEstruturada): RodadaEstruturada {
     return { ...estr, faseFinalIds: classificadosIds, jogos: [...estr.jogos, semi1, semi2] }
   }
 
+  // 16 jogadores (4 grupos): passam 1º e 2º de cada grupo.
+  //   Semi 1: dupla(2 melhores 1ºs) vs dupla(2 piores 2ºs)
+  //   Semi 2: dupla(outros dois 1ºs) vs dupla(2 melhores 2ºs)
+  if (grupos.length === 4) {
+    const { primeiros, segundos } = classificados12(estr)
+    if (primeiros.length !== 4 || segundos.length !== 4) return estr
+    const [p1, p2, p3, p4] = primeiros
+    const [s1, s2, s3, s4] = segundos
+
+    const classificadosIds = [...primeiros, ...segundos]
+    if (estr.jogos.some(j => j.fase === 'Semi 1')) return { ...estr, faseFinalIds: classificadosIds }
+
+    const semi1: JogoRodada = {
+      id: nanoid(), fase: 'Semi 1', rodadaRotacao: 1,
+      dupla: [p1, p2], dupla2: [s3, s4], finalizado: false,
+    }
+    const semi2: JogoRodada = {
+      id: nanoid(), fase: 'Semi 2', rodadaRotacao: 1,
+      dupla: [p3, p4], dupla2: [s1, s2], finalizado: false,
+    }
+    return { ...estr, faseFinalIds: classificadosIds, jogos: [...estr.jogos, semi1, semi2] }
+  }
+
   return estr
 }
 
-/** Para 12 jogadores: após os 2 semis estarem finalizados, gera FINAL + Disputa 3º. */
+/** Formatos de 12 e 16 jogadores terminam em mata-mata (semis, final e 3º lugar). */
+export function temMataMata(estr: RodadaEstruturada): boolean {
+  return getGrupos(estr).length >= 3
+}
+
+/** Após os 2 semis estarem finalizados, gera FINAL + Disputa 3º. */
 export function gerarFinais(estr: RodadaEstruturada): RodadaEstruturada {
-  const grupos = getGrupos(estr)
-  if (grupos.length !== 3) return estr
+  if (!temMataMata(estr)) return estr
   const semi1 = estr.jogos.find(j => j.fase === 'Semi 1')
   const semi2 = estr.jogos.find(j => j.fase === 'Semi 2')
   if (!semi1 || !semi2 || !semi1.finalizado || !semi2.finalizado) return estr
@@ -249,8 +276,8 @@ export function calcularPontosRodada(
     rankingFF.forEach((r, i) => resultado.push({ jogadorId: r.jogadorId, pontos: pts[i] ?? 0 }))
   }
 
-  // Formato 12: mata-mata Semi/Final/3º
-  if (grupos.length === 3) {
+  // Formatos 12 e 16: mata-mata Semi/Final/3º
+  if (temMataMata(estr)) {
     const final = estr.jogos.find(j => j.fase === 'Final')
     const disputa3 = estr.jogos.find(j => j.fase === 'Disputa 3º lugar')
     const campeoes = vencedoresJogo(final)
