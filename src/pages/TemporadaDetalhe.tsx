@@ -127,6 +127,94 @@ export default function TemporadaDetalhe() {
 
         {!leitura && <PlanilhaSyncPanel temporada={temporada} />}
 
+        {/* Rodadas */}
+        <div className="card overflow-hidden">
+          <div className="p-4 border-b border-teal-800 flex items-center gap-2">
+            <CalendarPlus className="text-yellow-300" size={20} />
+            <h2 className="font-display text-xl text-yellow-300 tracking-wide">RODADAS</h2>
+          </div>
+          {temporada.rodadas.length === 0 ? (
+            <div className="p-6 text-center text-teal-400 text-sm">Nenhuma rodada registrada.</div>
+          ) : (
+            <div className="divide-y divide-teal-800/50">
+              {[...temporada.rodadas]
+                .sort((a, b) => b.numero - a.numero || rotuloRodada(temporada, a).localeCompare(rotuloRodada(temporada, b)))
+                .map(r => (
+                <details key={r.id} className="group">
+                  <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-teal-50 flex items-center gap-2 flex-wrap">
+                        {rotuloRodada(temporada, r)} {r.nome ? <span className="text-teal-300 font-normal">— {r.nome}</span> : null}
+                        {r.estruturada && (
+                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${r.estruturada.finalizada ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-yellow-400/15 text-yellow-300 border border-yellow-400/30'}`}>
+                            {r.estruturada.finalizada ? 'Jogada no app' : 'Em andamento'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-teal-400 mt-0.5">
+                        {new Date(r.data).toLocaleDateString('pt-BR')} · {r.pontos.filter(p => p.pontos > 0).length} jogadores pontuaram
+                      </div>
+                    </div>
+                    {r.estruturada && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); navigate(`/temporada/${temporada.id}/rodada/${r.id}`) }}
+                        className="btn-secondary text-xs flex items-center gap-1 py-1.5"
+                        title={leitura ? 'Ver jogos' : 'Abrir / editar jogos'}
+                      >
+                        <Play size={12} /> {leitura ? 'Ver jogos' : 'Abrir'}
+                      </button>
+                    )}
+                    {!leitura && <>
+                    <button
+                      onClick={(e) => { e.preventDefault(); setEditandoPontosRodadaId(r.id) }}
+                      className="p-2 rounded-lg border border-teal-800 hover:border-yellow-400/40"
+                      title="Editar pontos manualmente"
+                    >
+                      <Pencil size={13} className="text-yellow-300" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault()
+                        if (confirm(`Excluir ${rotuloRodada(temporada, r)}? Os pontos serão descontados do ranking.`)) {
+                          removerRodadaTemporada(temporada.id, r.id)
+                          showToast('Rodada removida', 'info')
+                        }
+                      }}
+                      className="p-2 rounded-lg border border-teal-800 hover:border-red-500/50 hover:bg-red-500/10"
+                    >
+                      <Trash2 size={14} className="text-red-400" />
+                    </button>
+                    </>}
+                  </summary>
+                  <div className="px-4 pb-4 space-y-4">
+                    <table className="w-full text-xs">
+                      <tbody>
+                        {participantesDaRodada(r)
+                          .map(id => ({ id, liquido: pontosLiquidosNaRodada(r, id), atrasou: atrasouNaRodada(r, id) }))
+                          .sort((a, b) => b.liquido - a.liquido)
+                          .map(({ id, liquido, atrasou }) => {
+                            const j = temporada.jogadores.find(x => x.id === id)
+                            return (
+                              <tr key={id} className="border-b border-teal-800/30">
+                                <td className="py-2 text-teal-100">
+                                  {j?.nome ?? '?'}
+                                  {atrasou && <span className="ml-2 text-[10px] text-red-300">atraso −{PENALIDADE_ATRASO}</span>}
+                                </td>
+                                <td className="py-2 text-center"><LigaBadge liga={j?.liga ?? 'A'} /></td>
+                                <td className="py-2 text-right font-bold text-yellow-300">{liquido}</td>
+                              </tr>
+                            )
+                          })}
+                      </tbody>
+                    </table>
+                    {!r.importada && <AtrasosRodada temporada={temporada} rodada={r} />}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Toolbar: filtro + nova rodada */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="inline-flex rounded-lg border border-teal-800 overflow-hidden">
@@ -238,94 +326,6 @@ export default function TemporadaDetalhe() {
             </ul>
           )}
         </div>}
-
-        {/* Rodadas */}
-        <div className="card overflow-hidden">
-          <div className="p-4 border-b border-teal-800 flex items-center gap-2">
-            <CalendarPlus className="text-yellow-300" size={20} />
-            <h2 className="font-display text-xl text-yellow-300 tracking-wide">RODADAS</h2>
-          </div>
-          {temporada.rodadas.length === 0 ? (
-            <div className="p-6 text-center text-teal-400 text-sm">Nenhuma rodada registrada.</div>
-          ) : (
-            <div className="divide-y divide-teal-800/50">
-              {[...temporada.rodadas]
-                .sort((a, b) => b.numero - a.numero || rotuloRodada(temporada, a).localeCompare(rotuloRodada(temporada, b)))
-                .map(r => (
-                <details key={r.id} className="group">
-                  <summary className="p-4 cursor-pointer hover:bg-teal-900/30 flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-teal-50 flex items-center gap-2 flex-wrap">
-                        {rotuloRodada(temporada, r)} {r.nome ? <span className="text-teal-300 font-normal">— {r.nome}</span> : null}
-                        {r.estruturada && (
-                          <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded ${r.estruturada.finalizada ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-yellow-400/15 text-yellow-300 border border-yellow-400/30'}`}>
-                            {r.estruturada.finalizada ? 'Jogada no app' : 'Em andamento'}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-teal-400 mt-0.5">
-                        {new Date(r.data).toLocaleDateString('pt-BR')} · {r.pontos.filter(p => p.pontos > 0).length} jogadores pontuaram
-                      </div>
-                    </div>
-                    {r.estruturada && (
-                      <button
-                        onClick={(e) => { e.preventDefault(); navigate(`/temporada/${temporada.id}/rodada/${r.id}`) }}
-                        className="btn-secondary text-xs flex items-center gap-1 py-1.5"
-                        title={leitura ? 'Ver jogos' : 'Abrir / editar jogos'}
-                      >
-                        <Play size={12} /> {leitura ? 'Ver jogos' : 'Abrir'}
-                      </button>
-                    )}
-                    {!leitura && <>
-                    <button
-                      onClick={(e) => { e.preventDefault(); setEditandoPontosRodadaId(r.id) }}
-                      className="p-2 rounded-lg border border-teal-800 hover:border-yellow-400/40"
-                      title="Editar pontos manualmente"
-                    >
-                      <Pencil size={13} className="text-yellow-300" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        if (confirm(`Excluir ${rotuloRodada(temporada, r)}? Os pontos serão descontados do ranking.`)) {
-                          removerRodadaTemporada(temporada.id, r.id)
-                          showToast('Rodada removida', 'info')
-                        }
-                      }}
-                      className="p-2 rounded-lg border border-teal-800 hover:border-red-500/50 hover:bg-red-500/10"
-                    >
-                      <Trash2 size={14} className="text-red-400" />
-                    </button>
-                    </>}
-                  </summary>
-                  <div className="px-4 pb-4 space-y-4">
-                    <table className="w-full text-xs">
-                      <tbody>
-                        {participantesDaRodada(r)
-                          .map(id => ({ id, liquido: pontosLiquidosNaRodada(r, id), atrasou: atrasouNaRodada(r, id) }))
-                          .sort((a, b) => b.liquido - a.liquido)
-                          .map(({ id, liquido, atrasou }) => {
-                            const j = temporada.jogadores.find(x => x.id === id)
-                            return (
-                              <tr key={id} className="border-b border-teal-800/30">
-                                <td className="py-2 text-teal-100">
-                                  {j?.nome ?? '?'}
-                                  {atrasou && <span className="ml-2 text-[10px] text-red-300">atraso −{PENALIDADE_ATRASO}</span>}
-                                </td>
-                                <td className="py-2 text-center"><LigaBadge liga={j?.liga ?? 'A'} /></td>
-                                <td className="py-2 text-right font-bold text-yellow-300">{liquido}</td>
-                              </tr>
-                            )
-                          })}
-                      </tbody>
-                    </table>
-                    {!r.importada && <AtrasosRodada temporada={temporada} rodada={r} />}
-                  </div>
-                </details>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {modalRodada && (
