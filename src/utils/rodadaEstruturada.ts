@@ -32,6 +32,32 @@ export interface RankingJogadorRodada {
   vitorias: number
   derrotas: number
   saldo: number
+  gamesPro: number
+  gamesContra: number
+  /** Games feitos ÷ total de games disputados (0 a 1). */
+  average: number
+}
+
+/** Games average: games feitos dividido pelo total de games disputados. */
+export function gamesAverage(gamesPro: number, gamesContra: number): number {
+  const total = gamesPro + gamesContra
+  return total > 0 ? gamesPro / total : 0
+}
+
+/** 0.5833 → "0,583" */
+export function formatarAverage(average: number): string {
+  return average.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+/** Desempate: vitórias → saldo de games → games average → sorteio fixo. */
+export function compararDesempate(
+  a: Pick<RankingJogadorRodada, 'vitorias' | 'saldo' | 'average' | 'jogadorId'>,
+  b: Pick<RankingJogadorRodada, 'vitorias' | 'saldo' | 'average' | 'jogadorId'>,
+): number {
+  return (b.vitorias - a.vitorias)
+    || (b.saldo - a.saldo)
+    || (b.average - a.average)
+    || a.jogadorId.localeCompare(b.jogadorId)
 }
 
 /** Calcula ranking individual dentro de uma fase (grupo). */
@@ -41,13 +67,24 @@ export function calcularRankingFase(
   jogadorIds: string[]
 ): RankingJogadorRodada[] {
   const map: Record<string, RankingJogadorRodada> = {}
-  jogadorIds.forEach(id => { map[id] = { jogadorId: id, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0 } })
+  jogadorIds.forEach(id => {
+    map[id] = { jogadorId: id, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, average: 0 }
+  })
+
+  const somar = (pid: string, pro: number, contra: number) => {
+    const r = map[pid]
+    if (!r) return
+    r.jogos++
+    r.gamesPro += pro
+    r.gamesContra += contra
+    r.saldo += pro - contra
+  }
 
   jogos.filter(j => j.fase === fase && j.finalizado).forEach(jogo => {
     const p1 = jogo.placar1 ?? 0
     const p2 = jogo.placar2 ?? 0
-    jogo.dupla.forEach(pid => { if (map[pid]) { map[pid].jogos++; map[pid].saldo += p1 - p2 } })
-    jogo.dupla2.forEach(pid => { if (map[pid]) { map[pid].jogos++; map[pid].saldo += p2 - p1 } })
+    jogo.dupla.forEach(pid => somar(pid, p1, p2))
+    jogo.dupla2.forEach(pid => somar(pid, p2, p1))
     if (p1 > p2) {
       jogo.dupla.forEach(pid => { if (map[pid]) map[pid].vitorias++ })
       jogo.dupla2.forEach(pid => { if (map[pid]) map[pid].derrotas++ })
@@ -57,11 +94,9 @@ export function calcularRankingFase(
     }
   })
 
-  return Object.values(map).sort((a, b) => {
-    if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias
-    if (b.saldo !== a.saldo) return b.saldo - a.saldo
-    return a.jogadorId.localeCompare(b.jogadorId) // desempate deterministico
-  })
+  return Object.values(map)
+    .map(r => ({ ...r, average: gamesAverage(r.gamesPro, r.gamesContra) }))
+    .sort(compararDesempate)
 }
 
 /** Retorna a lista de grupos (nova estrutura) com fallback para rodadas antigas (grupoA/grupoB). */
@@ -118,7 +153,7 @@ export function classificados12(estr: RodadaEstruturada): {
     rks
       .map(r => r[pos])
       .filter(Boolean)
-      .sort((a, b) => (b.vitorias - a.vitorias) || (b.saldo - a.saldo) || a.jogadorId.localeCompare(b.jogadorId))
+      .sort(compararDesempate)
       .map(r => r.jogadorId)
   const primeiros = extrair(0)
   const segundos = extrair(1)

@@ -4,6 +4,7 @@ import { useTorneioStore } from '../store/torneioStore'
 import { calcularClassificacao } from '../utils/calcularClassificacao'
 import { calcularRankingReizinho } from '../utils/gerarReizinho'
 import { calcularRankingTodos } from '../utils/todosContraTodos'
+import { formatarAverage } from '../utils/rodadaEstruturada'
 import { Grid3X3, Crown, Edit2, ArrowLeftRight } from 'lucide-react'
 import Modal from '../components/ui/Modal'
 import EditarDuplasModal from '../components/duplas/EditarDuplasModal'
@@ -314,6 +315,7 @@ function RankingTodos({ torneio, grupo, classificados }: any) {
             <th className="py-1.5 text-center">V</th>
             <th className="py-1.5 text-center">D</th>
             <th className="py-1.5 text-center">Saldo</th>
+            <th className="py-1.5 text-center" title="Games average: games feitos ÷ total de games">GA</th>
           </tr>
         </thead>
         <tbody>
@@ -327,6 +329,7 @@ function RankingTodos({ torneio, grupo, classificados }: any) {
               <td className="py-2 text-center text-emerald-400">{r.vitorias}</td>
               <td className="py-2 text-center text-red-400">{r.derrotas}</td>
               <td className="py-2 text-center font-bold text-yellow-300">{r.saldo > 0 ? `+${r.saldo}` : r.saldo}</td>
+              <td className="py-2 text-center text-teal-300 tabular-nums">{formatarAverage(r.average)}</td>
             </tr>
           ))}
         </tbody>

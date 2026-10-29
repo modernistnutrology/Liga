@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil, Check } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
-import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata } from '../utils/rodadaEstruturada'
+import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata, formatarAverage } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
 import BotaoConta from '../components/BotaoConta'
@@ -291,7 +291,7 @@ function FaseCard({
   jogadorIds: string[]
   nome: (id: string) => string
   onPlacar: (jogoId: string, patch: Partial<JogoRodada>) => void
-  ranking: { jogadorId: string; jogos: number; vitorias: number; saldo: number }[]
+  ranking: { jogadorId: string; jogos: number; vitorias: number; saldo: number; average: number }[]
   classificados: number
   destacado?: boolean
 }) {
@@ -311,6 +311,7 @@ function FaseCard({
             <th className="px-2 py-2 text-center">J</th>
             <th className="px-2 py-2 text-center">V</th>
             <th className="px-2 py-2 text-center">Saldo</th>
+            <th className="px-2 py-2 text-center" title="Games average: games feitos ÷ total de games">GA</th>
           </tr>
         </thead>
         <tbody>
@@ -321,13 +322,14 @@ function FaseCard({
               <td className="px-2 py-2 text-center text-teal-300">{r.jogos}</td>
               <td className="px-2 py-2 text-center text-emerald-400">{r.vitorias}</td>
               <td className="px-2 py-2 text-center text-teal-200">{r.saldo > 0 ? `+${r.saldo}` : r.saldo}</td>
+              <td className="px-2 py-2 text-center text-teal-300 tabular-nums">{formatarAverage(r.average)}</td>
             </tr>
           ))}
           {ranking.length === 0 && jogadorIds.map(jid => (
             <tr key={jid} className="border-b border-teal-800/40">
               <td className="px-3 py-2 text-teal-500">—</td>
               <td className="px-3 py-2 text-teal-100">{nome(jid)}</td>
-              <td className="px-2 py-2 text-center text-teal-500" colSpan={3}>Aguardando jogos...</td>
+              <td className="px-2 py-2 text-center text-teal-500" colSpan={4}>Aguardando jogos...</td>
             </tr>
           ))}
         </tbody>

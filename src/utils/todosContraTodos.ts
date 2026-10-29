@@ -1,5 +1,6 @@
 import type { Dupla, Jogo, Jogador } from '../types'
 import { nanoid } from './nanoid'
+import { gamesAverage, compararDesempate } from './rodadaEstruturada'
 
 /**
  * "Todos contra Todos" — grupos com rodízio de parceiros.
@@ -80,13 +81,13 @@ export interface RankingJogadorTodos {
   vitorias: number
   derrotas: number
   saldo: number   // saldo de games/pontos dentro dos jogos do grupo
+  gamesPro: number
+  gamesContra: number
+  /** Games feitos ÷ total de games disputados (0 a 1). */
+  average: number
 }
 
-/**
- * Classificação individual dentro de um grupo do "Todos contra Todos".
- * Critérios: vitórias > saldo de games. Empates são resolvidos aleatoriamente
- * na formação das duplas do mata-mata (não aqui).
- */
+/** Classificação individual no grupo: vitórias → saldo → games average → sorteio fixo. */
 export function calcularRankingTodos(
   jogadores: Jogador[],
   duplas: Dupla[],
@@ -95,7 +96,7 @@ export function calcularRankingTodos(
 ): RankingJogadorTodos[] {
   const map: Record<string, RankingJogadorTodos> = {}
   jogadores.forEach(j => {
-    map[j.id] = { jogador: j, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0 }
+    map[j.id] = { jogador: j, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, average: 0 }
   })
 
   const jogosGrupo = jogos.filter(j =>
@@ -119,18 +120,21 @@ export function calcularRankingTodos(
       ;[loser.jogador1Id, loser.jogador2Id].forEach(pid => { if (map[pid]) map[pid].derrotas++ })
     }
 
-    ;[d1.jogador1Id, d1.jogador2Id].forEach(pid => { if (map[pid]) map[pid].saldo += p1 - p2 })
-    ;[d2.jogador1Id, d2.jogador2Id].forEach(pid => { if (map[pid]) map[pid].saldo += p2 - p1 })
+    const somar = (pid: string, pro: number, contra: number) => {
+      const r = map[pid]
+      if (!r) return
+      r.saldo += pro - contra
+      r.gamesPro += pro
+      r.gamesContra += contra
+    }
+    ;[d1.jogador1Id, d1.jogador2Id].forEach(pid => somar(pid, p1, p2))
+    ;[d2.jogador1Id, d2.jogador2Id].forEach(pid => somar(pid, p2, p1))
   })
 
   return Object.values(map)
     .filter(r => jogadores.some(j => j.id === r.jogador.id))
-    .sort((a, b) => {
-      if (b.vitorias !== a.vitorias) return b.vitorias - a.vitorias
-      if (b.saldo !== a.saldo) return b.saldo - a.saldo
-      // Empate em vitorias e saldo → escolhe um deterministicamente (por id do jogador)
-      return a.jogador.id.localeCompare(b.jogador.id)
-    })
+    .map(r => ({ ...r, average: gamesAverage(r.gamesPro, r.gamesContra) }))
+    .sort((a, b) => compararDesempate({ ...a, jogadorId: a.jogador.id }, { ...b, jogadorId: b.jogador.id }))
 }
 
 /**
@@ -168,7 +172,7 @@ export function formarDuplasMataMataTodos(
     ranking.forEach((r, i) => {
       if (i === 0) { atual = [r]; return }
       const anterior = ranking[i - 1]
-      if (r.vitorias === anterior.vitorias && r.saldo === anterior.saldo) {
+      if (r.vitorias === anterior.vitorias && r.saldo === anterior.saldo && r.average === anterior.average) {
         atual.push(r)
       } else {
         // Termina o bloco anterior — embaralha empates
