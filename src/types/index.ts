@@ -104,6 +104,8 @@ export interface RodadaEstruturada {
   jogos: JogoRodada[]
   faseFinalIds?: string[] // 4 classificados para Fase Final
   finalizada: boolean
+  /** Rodadas criadas a partir do regulamento usam o Game Average após o saldo; ausente = critério antigo. */
+  desempate?: 'game_average'
 }
 
 export interface RodadaTemporada {

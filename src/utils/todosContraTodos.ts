@@ -1,6 +1,6 @@
 import type { Dupla, Jogo, Jogador } from '../types'
 import { nanoid } from './nanoid'
-import { gamesAverage, compararDesempate } from './rodadaEstruturada'
+import { gamesAverage, compararDesempate, razaoDoJogo } from './rodadaEstruturada'
 
 /**
  * "Todos contra Todos" — grupos com rodízio de parceiros.
@@ -83,7 +83,8 @@ export interface RankingJogadorTodos {
   saldo: number   // saldo de games/pontos dentro dos jogos do grupo
   gamesPro: number
   gamesContra: number
-  /** Games feitos ÷ total de games disputados (0 a 1). */
+  somaRazoes: number
+  /** Game Average do regulamento: média de (vencidos ÷ perdidos) por jogo. */
   average: number
 }
 
@@ -96,7 +97,7 @@ export function calcularRankingTodos(
 ): RankingJogadorTodos[] {
   const map: Record<string, RankingJogadorTodos> = {}
   jogadores.forEach(j => {
-    map[j.id] = { jogador: j, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, average: 0 }
+    map[j.id] = { jogador: j, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, somaRazoes: 0, average: 0 }
   })
 
   const jogosGrupo = jogos.filter(j =>
@@ -126,6 +127,7 @@ export function calcularRankingTodos(
       r.saldo += pro - contra
       r.gamesPro += pro
       r.gamesContra += contra
+      r.somaRazoes += razaoDoJogo(pro, contra)
     }
     ;[d1.jogador1Id, d1.jogador2Id].forEach(pid => somar(pid, p1, p2))
     ;[d2.jogador1Id, d2.jogador2Id].forEach(pid => somar(pid, p2, p1))
@@ -133,7 +135,7 @@ export function calcularRankingTodos(
 
   return Object.values(map)
     .filter(r => jogadores.some(j => j.id === r.jogador.id))
-    .map(r => ({ ...r, average: gamesAverage(r.gamesPro, r.gamesContra) }))
+    .map(r => ({ ...r, average: gamesAverage(r.somaRazoes, r.jogos) }))
     .sort((a, b) => compararDesempate({ ...a, jogadorId: a.jogador.id }, { ...b, jogadorId: b.jogador.id }))
 }
 

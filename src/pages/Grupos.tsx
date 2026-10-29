@@ -315,7 +315,7 @@ function RankingTodos({ torneio, grupo, classificados }: any) {
             <th className="py-1.5 text-center">V</th>
             <th className="py-1.5 text-center">D</th>
             <th className="py-1.5 text-center">Saldo</th>
-            <th className="py-1.5 text-center" title="Games average: games feitos ÷ total de games">GA</th>
+            <th className="py-1.5 text-center" title="Game Average: média de (games vencidos ÷ games perdidos) de cada jogo; 6/0 conta como 6/1">GA</th>
           </tr>
         </thead>
         <tbody>

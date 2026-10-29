@@ -34,41 +34,59 @@ export interface RankingJogadorRodada {
   saldo: number
   gamesPro: number
   gamesContra: number
-  /** Games feitos ÷ total de games disputados (0 a 1). */
+  /** Soma de (vencidos ÷ perdidos) de cada jogo; o average é essa soma ÷ jogos. */
+  somaRazoes: number
+  /** Game Average do regulamento (Parágrafo 4). */
   average: number
 }
 
-/** Games average: games feitos dividido pelo total de games disputados. */
-export function gamesAverage(gamesPro: number, gamesContra: number): number {
-  const total = gamesPro + gamesContra
-  return total > 0 ? gamesPro / total : 0
+/**
+ * Regulamento, Parágrafo 4: em cada jogo divide-se games vencidos por games perdidos;
+ * para o cálculo, 6/0 vale como 6/1 (sem games perdidos, divide por 1).
+ */
+export function razaoDoJogo(vencidos: number, perdidos: number): number {
+  return vencidos / (perdidos === 0 ? 1 : perdidos)
 }
 
-/** 0.5833 → "0,583" */
+/** Soma das razões de cada jogo dividida pelo número de jogos realizados no grupo. */
+export function gamesAverage(somaRazoes: number, jogos: number): number {
+  return jogos > 0 ? somaRazoes / jogos : 0
+}
+
+/** 1.0833 → "1,08" */
 export function formatarAverage(average: number): string {
-  return average.toLocaleString('pt-BR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+  return average.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-/** Desempate: vitórias → saldo de games → games average → sorteio fixo. */
-export function compararDesempate(
-  a: Pick<RankingJogadorRodada, 'vitorias' | 'saldo' | 'average' | 'jogadorId'>,
-  b: Pick<RankingJogadorRodada, 'vitorias' | 'saldo' | 'average' | 'jogadorId'>,
-): number {
+type Desempatavel = Pick<RankingJogadorRodada, 'vitorias' | 'saldo' | 'average' | 'jogadorId'>
+
+/** Desempate: vitórias → saldo de games → Game Average → sorteio fixo. */
+export function compararDesempate(a: Desempatavel, b: Desempatavel): number {
   return (b.vitorias - a.vitorias)
     || (b.saldo - a.saldo)
     || (b.average - a.average)
     || a.jogadorId.localeCompare(b.jogadorId)
 }
 
+/** Critério das rodadas criadas antes do Game Average: vitórias → saldo → sorteio fixo. */
+function compararDesempateAntigo(a: Desempatavel, b: Desempatavel): number {
+  return (b.vitorias - a.vitorias) || (b.saldo - a.saldo) || a.jogadorId.localeCompare(b.jogadorId)
+}
+
+export function usaGameAverage(estr: Pick<RodadaEstruturada, 'desempate'>): boolean {
+  return estr.desempate === 'game_average'
+}
+
 /** Calcula ranking individual dentro de uma fase (grupo). */
 export function calcularRankingFase(
   jogos: JogoRodada[],
   fase: string,
-  jogadorIds: string[]
+  jogadorIds: string[],
+  comGameAverage = true,
 ): RankingJogadorRodada[] {
   const map: Record<string, RankingJogadorRodada> = {}
   jogadorIds.forEach(id => {
-    map[id] = { jogadorId: id, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, average: 0 }
+    map[id] = { jogadorId: id, jogos: 0, vitorias: 0, derrotas: 0, saldo: 0, gamesPro: 0, gamesContra: 0, somaRazoes: 0, average: 0 }
   })
 
   const somar = (pid: string, pro: number, contra: number) => {
@@ -78,6 +96,7 @@ export function calcularRankingFase(
     r.gamesPro += pro
     r.gamesContra += contra
     r.saldo += pro - contra
+    r.somaRazoes += razaoDoJogo(pro, contra)
   }
 
   jogos.filter(j => j.fase === fase && j.finalizado).forEach(jogo => {
@@ -95,8 +114,8 @@ export function calcularRankingFase(
   })
 
   return Object.values(map)
-    .map(r => ({ ...r, average: gamesAverage(r.gamesPro, r.gamesContra) }))
-    .sort(compararDesempate)
+    .map(r => ({ ...r, average: gamesAverage(r.somaRazoes, r.jogos) }))
+    .sort(comGameAverage ? compararDesempate : compararDesempateAntigo)
 }
 
 /** Retorna a lista de grupos (nova estrutura) com fallback para rodadas antigas (grupoA/grupoB). */
@@ -134,7 +153,7 @@ export function fasesFinalizadas(estr: RodadaEstruturada): FasesStatus {
 
 /** Rankings dos N grupos ordenados por posição (dentro de cada grupo). Útil pro bracket de 12. */
 export function rankingsPorGrupo(estr: RodadaEstruturada): RankingJogadorRodada[][] {
-  return getGrupos(estr).map((ids, i) => calcularRankingFase(estr.jogos, nomeGrupo(i), ids))
+  return getGrupos(estr).map((ids, i) => calcularRankingFase(estr.jogos, nomeGrupo(i), ids, usaGameAverage(estr)))
 }
 
 /**
@@ -153,7 +172,7 @@ export function classificados12(estr: RodadaEstruturada): {
     rks
       .map(r => r[pos])
       .filter(Boolean)
-      .sort(compararDesempate)
+      .sort(usaGameAverage(estr) ? compararDesempate : compararDesempateAntigo)
       .map(r => r.jogadorId)
   const primeiros = extrair(0)
   const segundos = extrair(1)
@@ -175,7 +194,7 @@ export function gerarFaseFinal(estr: RodadaEstruturada): RodadaEstruturada {
   if (grupos.length === 2) {
     const faseFinalIds: string[] = []
     for (let i = 0; i < 2; i++) {
-      const top = calcularRankingFase(estr.jogos, nomeGrupo(i), grupos[i]).slice(0, 2).map(r => r.jogadorId)
+      const top = calcularRankingFase(estr.jogos, nomeGrupo(i), grupos[i], usaGameAverage(estr)).slice(0, 2).map(r => r.jogadorId)
       faseFinalIds.push(...top)
     }
     if (faseFinalIds.length !== 4) return estr
@@ -306,7 +325,7 @@ export function calcularPontosRodada(
 
   // Formato 8: fase final em rodízio de 4
   if (grupos.length === 2 && estr.faseFinalIds && estr.faseFinalIds.length === 4 && estr.jogos.some(j => j.fase === 'Fase Final')) {
-    const rankingFF = calcularRankingFase(estr.jogos, 'Fase Final', estr.faseFinalIds)
+    const rankingFF = calcularRankingFase(estr.jogos, 'Fase Final', estr.faseFinalIds, usaGameAverage(estr))
     const pts = [1000, 750, 500, 400]
     rankingFF.forEach((r, i) => resultado.push({ jogadorId: r.jogadorId, pontos: pts[i] ?? 0 }))
   }
@@ -330,7 +349,7 @@ export function calcularPontosRodada(
   // Eliminados na fase 1 → 250 (c/vit) ou 150 (s/vit)
   const pontuados = new Set(resultado.map(r => r.jogadorId))
   grupos.forEach((ids, i) => {
-    const ranking = calcularRankingFase(estr.jogos, nomeGrupo(i), ids)
+    const ranking = calcularRankingFase(estr.jogos, nomeGrupo(i), ids, usaGameAverage(estr))
     ranking.forEach(r => {
       if (classificados.has(r.jogadorId) && pontuados.has(r.jogadorId)) return
       if (classificados.has(r.jogadorId) && !pontuados.has(r.jogadorId)) return // ainda não jogou mata-mata
