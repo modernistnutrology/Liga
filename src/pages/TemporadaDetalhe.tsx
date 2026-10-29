@@ -397,6 +397,7 @@ function JogadorRow({ jogador, onEdit, onRemove }: { jogador: JogadorTemporada; 
   const [liga, setLiga] = useState<Liga>(jogador.liga)
   const [confirmar, setConfirmar] = useState(false)
   const [atrasosAnteriores, setAtrasosAnteriores] = useState(String(jogador.atrasosAnteriores ?? 0))
+  const [rodadasAnteriores, setRodadasAnteriores] = useState(String(jogador.rodadasJogadasOverride ?? 0))
 
   if (editando) {
     return (
@@ -406,6 +407,15 @@ function JogadorRow({ jogador, onEdit, onRemove }: { jogador: JogadorTemporada; 
           <option value="A">Liga A</option>
           <option value="B">Liga B</option>
         </select>
+        <label className="flex items-center gap-1.5 text-xs text-teal-300" title="Rodadas jogadas antes de usar o app (rodadas 1–4 da planilha). As rodadas lançadas no app são contadas sozinhas.">
+          Rodadas antes do app
+          <input
+            type="number" inputMode="numeric" min={0}
+            className="input w-16 text-center"
+            value={rodadasAnteriores}
+            onChange={e => setRodadasAnteriores(e.target.value)}
+          />
+        </label>
         <label className="flex items-center gap-1.5 text-xs text-teal-300" title="Atrasos das rodadas importadas da planilha (já descontados nos pontos)">
           Atrasos anteriores
           <input
@@ -417,7 +427,12 @@ function JogadorRow({ jogador, onEdit, onRemove }: { jogador: JogadorTemporada; 
         </label>
         <button
           onClick={() => {
-            onEdit({ nome: nome.trim() || jogador.nome, liga, atrasosAnteriores: Math.max(0, Number(atrasosAnteriores) || 0) })
+            onEdit({
+              nome: nome.trim() || jogador.nome,
+              liga,
+              atrasosAnteriores: Math.max(0, Number(atrasosAnteriores) || 0),
+              rodadasJogadasOverride: Math.max(0, Number(rodadasAnteriores) || 0),
+            })
             setEditando(false)
           }}
           className="btn-primary text-xs px-3 py-2"

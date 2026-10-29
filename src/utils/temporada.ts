@@ -114,8 +114,9 @@ export function semanasDaTemporada(t: Temporada): SemanaRodada[] {
 /**
  * v2: Liga B passou a valer 60% da tabela da Liga A.
  * v3: atrasos já ocorridos até a Rodada 5 registrados.
+ * v4: +1 rodada jogada (antes do app) para Murillo, Nani, Christian e Alexandre.
  */
-export const VERSAO_REGRAS_ATUAL = 3
+export const VERSAO_REGRAS_ATUAL = 4
 const MAIOR_PONTUACAO_LIGA_B = 600
 
 /** Converte para 60% as rodadas só da Liga B que foram lançadas com a tabela cheia. */
@@ -159,12 +160,26 @@ function migrarParaV3(t: Temporada): Temporada {
   }
 }
 
+const RODADA_A_MAIS_V4 = ['Murillo', 'Nani', 'Christian', 'Alexandre']
+
+/** Rodadas da planilha que ficaram sem contar para esses jogadores; só na temporada importada do Village. */
+function migrarParaV4(t: Temporada): Temporada {
+  if (!t.rodadas.some(r => r.importada)) return t
+  return {
+    ...t,
+    jogadores: t.jogadores.map(j =>
+      RODADA_A_MAIS_V4.includes(j.nome) ? { ...j, rodadasJogadasOverride: (j.rodadasJogadasOverride ?? 0) + 1 } : j
+    ),
+  }
+}
+
 export function aplicarRegrasAtuais(t: Temporada): Temporada {
   const versao = t.versaoRegras ?? 1
   if (versao >= VERSAO_REGRAS_ATUAL) return t
   let atual = t
   if (versao < 2) atual = migrarParaV2(atual)
   if (versao < 3) atual = migrarParaV3(atual)
+  if (versao < 4) atual = migrarParaV4(atual)
   return { ...atual, versaoRegras: VERSAO_REGRAS_ATUAL }
 }
 
