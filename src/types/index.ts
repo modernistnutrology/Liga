@@ -106,6 +106,8 @@ export interface RodadaEstruturada {
   finalizada: boolean
   /** Rodadas criadas a partir do regulamento usam o Game Average após o saldo; ausente = critério antigo. */
   desempate?: 'game_average'
+  /** Admin confirmou que a chave gravada é a que foi jogada, mesmo não batendo com os placares. */
+  chaveConferida?: boolean
 }
 
 export interface RodadaTemporada {

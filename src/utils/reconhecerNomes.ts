@@ -10,9 +10,14 @@ export function normalizarNome(s: string): string {
     .trim()
 }
 
+/** O WhatsApp insere caracteres invisíveis (ex.: U+2060) que grudam no nome. */
+export function tirarInvisiveis(s: string): string {
+  return s.replace(/[​-‏‪-‮⁠-⁤﻿]/g, '')
+}
+
 /** Tira numeração ("1.", "02 -", "3)"), marcadores, emojis e observações entre parênteses. */
 export function limparLinha(linha: string): string {
-  return linha
+  return tirarInvisiveis(linha)
     .replace(/\p{Extended_Pictographic}|️|‍/gu, ' ')
     .replace(/\(.*?\)/g, ' ')
     .replace(/^\s*(\d+\s*[.)\-–—:º°]?\s*|[-–—•*·>]\s*)/, '')
@@ -43,7 +48,7 @@ const MINUSCULAS = new Set(['da', 'de', 'do', 'das', 'dos', 'e'])
 
 /** "fulano de TAL" → "Fulano de Tal" */
 export function formatarNomeNovo(linha: string): string {
-  return linha
+  return tirarInvisiveis(linha)
     .trim()
     .split(/\s+/)
     .map((p, i) => {

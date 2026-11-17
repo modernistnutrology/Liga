@@ -1,4 +1,5 @@
 import type { Temporada, JogadorTemporada, Liga, RodadaTemporada } from '../types'
+import { tirarInvisiveis, formatarNomeNovo } from './reconhecerNomes'
 
 const LIGAS: Liga[] = ['A', 'B']
 
@@ -115,8 +116,9 @@ export function semanasDaTemporada(t: Temporada): SemanaRodada[] {
  * v2: Liga B passou a valer 60% da tabela da Liga A.
  * v3: atrasos já ocorridos até a Rodada 5 registrados.
  * v4: +1 rodada jogada (antes do app) para Murillo, Nani, Christian e Alexandre.
+ * v5: nomes colados do WhatsApp sem caracteres invisíveis (ex.: "⁠joão Marcelo" → "João Marcelo").
  */
-export const VERSAO_REGRAS_ATUAL = 4
+export const VERSAO_REGRAS_ATUAL = 5
 const MAIOR_PONTUACAO_LIGA_B = 600
 
 /** Converte para 60% as rodadas só da Liga B que foram lançadas com a tabela cheia. */
@@ -173,6 +175,16 @@ function migrarParaV4(t: Temporada): Temporada {
   }
 }
 
+function migrarParaV5(t: Temporada): Temporada {
+  return {
+    ...t,
+    jogadores: t.jogadores.map(j => {
+      const limpo = tirarInvisiveis(j.nome)
+      return limpo === j.nome ? j : { ...j, nome: formatarNomeNovo(limpo) }
+    }),
+  }
+}
+
 export function aplicarRegrasAtuais(t: Temporada): Temporada {
   const versao = t.versaoRegras ?? 1
   if (versao >= VERSAO_REGRAS_ATUAL) return t
@@ -180,6 +192,7 @@ export function aplicarRegrasAtuais(t: Temporada): Temporada {
   if (versao < 2) atual = migrarParaV2(atual)
   if (versao < 3) atual = migrarParaV3(atual)
   if (versao < 4) atual = migrarParaV4(atual)
+  if (versao < 5) atual = migrarParaV5(atual)
   return { ...atual, versaoRegras: VERSAO_REGRAS_ATUAL }
 }
 

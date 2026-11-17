@@ -279,6 +279,60 @@ export function gerarFinais(estr: RodadaEstruturada): RodadaEstruturada {
   return { ...estr, jogos: [...estr.jogos, final, disputa3] }
 }
 
+const FASES_FINAIS = ['Final', 'Disputa 3º lugar']
+const FASES_POS_GRUPOS = ['Semi 1', 'Semi 2', 'Fase Final', ...FASES_FINAIS]
+
+/** Apaga semifinais / fase final e tudo depois delas e gera de novo pela classificação atual dos grupos. */
+export function refazerAposGrupos(estr: RodadaEstruturada): RodadaEstruturada {
+  return gerarFaseFinal({
+    ...estr,
+    finalizada: false,
+    faseFinalIds: undefined,
+    jogos: estr.jogos.filter(j => !FASES_POS_GRUPOS.includes(j.fase)),
+  })
+}
+
+/** Apaga final e 3º lugar e gera de novo pelos placares atuais das semifinais. */
+export function refazerFinais(estr: RodadaEstruturada): RodadaEstruturada {
+  return gerarFinais({ ...estr, finalizada: false, jogos: estr.jogos.filter(j => !FASES_FINAIS.includes(j.fase)) })
+}
+
+const mesmaDupla = (a: string[], b: string[]) => a.length === b.length && a.every(id => b.includes(id))
+const mesmoConfronto = (x: JogoRodada, y: JogoRodada) =>
+  (mesmaDupla(x.dupla, y.dupla) && mesmaDupla(x.dupla2, y.dupla2)) ||
+  (mesmaDupla(x.dupla, y.dupla2) && mesmaDupla(x.dupla2, y.dupla))
+
+function confrontosBatem(atuais: JogoRodada[], esperados: JogoRodada[]): boolean {
+  return esperados.length === atuais.length &&
+    esperados.every(e => atuais.some(a => a.fase === e.fase && mesmoConfronto(a, e)))
+}
+
+/**
+ * Placares podem ser corrigidos depois que a fase seguinte já foi gerada.
+ * Aponta quando semifinais / fase final ou final / 3º lugar não batem mais com os resultados anteriores.
+ */
+export function verificarChave(estr: RodadaEstruturada): { aposGruposDesatualizado: boolean; finaisDesatualizadas: boolean } {
+  if (!fasesFinalizadas(estr).todosGrupos) return { aposGruposDesatualizado: false, finaisDesatualizadas: false }
+
+  if (!temMataMata(estr)) {
+    const atuais = estr.faseFinalIds ?? []
+    if (atuais.length === 0) return { aposGruposDesatualizado: false, finaisDesatualizadas: false }
+    const esperados = refazerAposGrupos(estr).faseFinalIds ?? []
+    return { aposGruposDesatualizado: !mesmaDupla(atuais, esperados), finaisDesatualizadas: false }
+  }
+
+  const semis = estr.jogos.filter(j => j.fase === 'Semi 1' || j.fase === 'Semi 2')
+  const semisEsperadas = refazerAposGrupos(estr).jogos.filter(j => j.fase === 'Semi 1' || j.fase === 'Semi 2')
+  const aposGruposDesatualizado = semis.length > 0 && !confrontosBatem(semis, semisEsperadas)
+
+  const finais = estr.jogos.filter(j => FASES_FINAIS.includes(j.fase))
+  const podeConferirFinais = !aposGruposDesatualizado && finais.length > 0 && semis.length === 2 && semis.every(s => s.finalizado)
+  const finaisDesatualizadas = podeConferirFinais &&
+    !confrontosBatem(finais, refazerFinais(estr).jogos.filter(j => FASES_FINAIS.includes(j.fase)))
+
+  return { aposGruposDesatualizado, finaisDesatualizadas }
+}
+
 /** Status detalhado de todas as fases possíveis. */
 export function statusDetalhado(estr: RodadaEstruturada) {
   const grupos = getGrupos(estr)

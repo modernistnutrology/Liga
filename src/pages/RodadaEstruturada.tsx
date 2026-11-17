@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil, Check } from 'lucide-react'
+import { ArrowLeft, Shuffle, Trophy, CheckCircle2, Save, Award, Pencil, Check, TriangleAlert, RotateCcw } from 'lucide-react'
 import { useTorneioStore } from '../store/torneioStore'
 import type { Liga, RodadaEstruturada as RodadaEstr, JogoRodada, JogadorTemporada } from '../types'
-import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata, formatarAverage, usaGameAverage } from '../utils/rodadaEstruturada'
+import { gerarJogosGrupo4, shuffle, calcularRankingFase, fasesFinalizadas, gerarFaseFinal, gerarFinais, calcularPontosRodada, getGrupos, nomeGrupo, statusDetalhado, temMataMata, formatarAverage, usaGameAverage, verificarChave, refazerAposGrupos, refazerFinais } from '../utils/rodadaEstruturada'
 import { showToast } from '../components/ui/Toast'
 import { useModoLeitura } from '../store/nuvemStore'
 import BotaoConta from '../components/BotaoConta'
@@ -46,8 +46,35 @@ export default function RodadaEstruturadaPage() {
   function updateJogo(jogoId: string, patch: Partial<JogoRodada>) {
     if (!estr) return
     const novos = estr.jogos.map(j => j.id === jogoId ? { ...j, ...patch } : j)
-    const nextEstr = { ...estr, jogos: novos }
+    // Placar mudou: volta a conferir se a chave ainda bate
+    const nextEstr = { ...estr, jogos: novos, chaveConferida: false }
     atualizarRodadaEstruturada(temporada!.id, rodada!.id, nextEstr)
+  }
+
+  function refazerSemis() {
+    if (!estr) return
+    const oQue = temMataMata(estr) ? 'as semifinais, a final e a disputa de 3º' : 'a fase final'
+    if (!confirm(`Gerar ${oQue} de novo pela classificação atual dos grupos?\n\nOs placares de ${oQue} serão apagados para você lançar de novo. Se a rodada já tinha pontos lançados, eles continuam no ranking até você lançar de novo.`)) return
+    atualizarRodadaEstruturada(temporada!.id, rodada!.id, { ...refazerAposGrupos(estr), chaveConferida: false })
+    showToast(temMataMata(estr) ? 'Semifinais geradas de novo' : 'Fase final gerada de novo', 'success')
+  }
+
+  function refazerFinaisRodada() {
+    if (!estr) return
+    if (!confirm('Gerar a final e a disputa de 3º de novo pelos placares atuais das semifinais?\n\nOs placares da final e do 3º lugar serão apagados para você lançar de novo. Se a rodada já tinha pontos lançados, eles continuam no ranking até você lançar de novo.')) return
+    atualizarRodadaEstruturada(temporada!.id, rodada!.id, { ...refazerFinais(estr), chaveConferida: false })
+    showToast('Final e 3º lugar gerados de novo', 'success')
+  }
+
+  function manterChave() {
+    if (!estr) return
+    atualizarRodadaEstruturada(temporada!.id, rodada!.id, { ...estr, chaveConferida: true })
+  }
+
+  function reabrirPontos() {
+    if (!estr) return
+    if (!confirm('Refazer o lançamento de pontos desta rodada?\n\nOs pontos atuais continuam no ranking até você lançar de novo.')) return
+    atualizarRodadaEstruturada(temporada!.id, rodada!.id, { ...estr, finalizada: false })
   }
 
   function avancarFaseFinal() {
@@ -74,6 +101,8 @@ export default function RodadaEstruturadaPage() {
   const status = statusDetalhado(estr)
   const mataMata = temMataMata(estr)
   const is16 = getGrupos(estr).length === 4
+  const chave = verificarChave(estr)
+  const avisoChave = !leitura && !estr.chaveConferida && (chave.aposGruposDesatualizado || chave.finaisDesatualizadas)
 
   return (
     <div className="min-h-screen bg-teal-950 safe-top">
@@ -105,6 +134,35 @@ export default function RodadaEstruturadaPage() {
                 { label: 'Pontos', ok: !!estr.finalizada },
               ]}
         />
+
+        {avisoChave && (
+          <div className="card p-4 border-yellow-400/50 bg-yellow-400/5 space-y-3">
+            <div className="flex items-start gap-2">
+              <TriangleAlert size={18} className="text-yellow-300 flex-shrink-0 mt-0.5" />
+              <div className="text-sm space-y-1">
+                <p className="font-semibold text-yellow-200">A chave não bate com os placares</p>
+                <p className="text-teal-200 text-xs leading-relaxed">
+                  {chave.aposGruposDesatualizado
+                    ? `Pelos placares atuais dos grupos, ${mataMata ? 'as semifinais' : 'a fase final'} seria${mataMata ? 'm' : ''} com outros jogadores. Isso costuma acontecer quando um placar de grupo é corrigido depois que a fase seguinte já foi gerada.`
+                    : 'O vencedor de uma semifinal não está na final (ou o 3º lugar não tem os perdedores). Isso costuma acontecer quando um placar de semifinal é corrigido depois que a final já foi gerada.'}
+                </p>
+                <p className="text-teal-400 text-xs">
+                  Se o que está gravado é o que foi jogado na quadra, corrija o placar errado ou escolha "Manter como está".
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={chave.aposGruposDesatualizado ? refazerSemis : refazerFinaisRodada}
+                className="btn-primary text-sm flex items-center gap-2"
+              >
+                <RotateCcw size={14} />
+                {chave.aposGruposDesatualizado ? (mataMata ? 'Gerar semifinais de novo' : 'Gerar fase final de novo') : 'Gerar final e 3º de novo'}
+              </button>
+              <button onClick={manterChave} className="btn-secondary text-sm">Manter como está</button>
+            </div>
+          </div>
+        )}
 
         {(!leitura || (rodada.atrasos?.length ?? 0) > 0) && (
           <div className="card p-4">
@@ -150,8 +208,11 @@ export default function RodadaEstruturadaPage() {
             destacado
           />
         )}
+        {!mataMata && estr.faseFinalIds && !leitura && (
+          <BotaoRefazer onClick={refazerSemis}>Refazer fase final pela classificação dos grupos</BotaoRefazer>
+        )}
         {!mataMata && fases.faseFinal && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
+          <ResumoFinal key={estr.finalizada ? "lancada" : "aberta"} estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} onReabrir={leitura ? undefined : reabrirPontos} />
         )}
 
         {/* Mata-mata — formato 12 */}
@@ -182,6 +243,7 @@ export default function RodadaEstruturadaPage() {
               nome={nome}
               onPlacar={updateJogo}
             />
+            {!leitura && <BotaoRefazer onClick={refazerSemis}>Refazer semifinais pela classificação dos grupos</BotaoRefazer>}
           </>
         )}
         {mataMata && status.semisOk && !status.temFinais && (
@@ -209,10 +271,13 @@ export default function RodadaEstruturadaPage() {
               nome={nome}
               onPlacar={updateJogo}
             />
+            {!leitura && status.semisOk && (
+              <BotaoRefazer onClick={refazerFinaisRodada}>Refazer final e 3º pelos placares das semifinais</BotaoRefazer>
+            )}
           </>
         )}
         {mataMata && status.finaisOk && (
-          <ResumoFinal estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} />
+          <ResumoFinal key={estr.finalizada ? "lancada" : "aberta"} estr={estr} jogadores={jogadoresDaRodada} finalizada={!!estr.finalizada} pontosGravados={rodada.pontos} atrasos={rodada.atrasos ?? []} onFinalizar={finalizar} onReabrir={leitura ? undefined : reabrirPontos} />
         )}
         </fieldset>
       </div>
@@ -228,6 +293,16 @@ function StepBar({ steps }: { steps: { label: string; ok: boolean }[] }) {
           {s.ok && <CheckCircle2 size={12} className="inline mr-1" />} {s.label}
         </div>
       ))}
+    </div>
+  )
+}
+
+function BotaoRefazer({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <div className="flex justify-end">
+      <button onClick={onClick} className="btn-ghost text-xs flex items-center gap-1.5 text-teal-300 hover:text-yellow-300 border border-teal-800 rounded-lg px-3 py-1.5">
+        <RotateCcw size={12} /> {children}
+      </button>
     </div>
   )
 }
@@ -390,7 +465,7 @@ function FaseCard({
 }
 
 function ResumoFinal({
-  estr, jogadores, finalizada, pontosGravados, atrasos, onFinalizar,
+  estr, jogadores, finalizada, pontosGravados, atrasos, onFinalizar, onReabrir,
 }: {
   estr: RodadaEstr
   jogadores: JogadorTemporada[]
@@ -398,6 +473,7 @@ function ResumoFinal({
   pontosGravados: { jogadorId: string; pontos: number }[]
   atrasos: string[]
   onFinalizar: (pontos: { jogadorId: string; pontos: number }[]) => void
+  onReabrir?: () => void
 }) {
   // Depois de lançada, vale o que está gravado (pode ter sido editado à mão ou corrigido)
   const calculados = finalizada ? pontosGravados : calcularPontosRodada(estr, jogadores)
@@ -479,13 +555,25 @@ function ResumoFinal({
           Total manual: {totalAtual} · Total calculado: {totalCalculado} ({totalAtual - totalCalculado > 0 ? '+' : ''}{totalAtual - totalCalculado})
         </div>
       )}
-      <div className="p-4 flex justify-end">
+      <div className="p-4 flex justify-end items-center gap-3 flex-wrap">
         {finalizada ? (
-          <span className="text-emerald-400 text-sm flex items-center gap-2"><CheckCircle2 size={16} /> Pontos já lançados no ranking</span>
+          <>
+            <span className="text-emerald-400 text-sm flex items-center gap-2"><CheckCircle2 size={16} /> Pontos já lançados no ranking</span>
+            {onReabrir && (
+              <button onClick={onReabrir} className="btn-secondary text-xs flex items-center gap-1.5">
+                <RotateCcw size={12} /> Refazer lançamento
+              </button>
+            )}
+          </>
         ) : (
-          <button onClick={salvar} className="btn-primary flex items-center gap-2">
-            <Save size={16} /> Lançar pontos no ranking
-          </button>
+          <>
+            {pontosGravados.length > 0 && (
+              <span className="text-xs text-teal-400">Os pontos anteriores continuam no ranking até você lançar de novo.</span>
+            )}
+            <button onClick={salvar} className="btn-primary flex items-center gap-2">
+              <Save size={16} /> Lançar pontos no ranking
+            </button>
+          </>
         )}
       </div>
     </div>
