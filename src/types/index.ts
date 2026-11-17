@@ -125,6 +125,16 @@ export interface RodadaTemporada {
   atrasos?: string[]
 }
 
+export interface SobeDesceAplicado {
+  /** Primeira rodada do ciclo (9, 13, 17, ...). */
+  cicloInicio: number
+  aplicadoEm: string
+  /** Foram da Liga B para a A. */
+  subiram: string[]
+  /** Foram da Liga A para a B. */
+  desceram: string[]
+}
+
 export interface Temporada {
   id: string
   nome: string
@@ -132,6 +142,8 @@ export interface Temporada {
   rodadasAnteriores?: number
   /** Versão das regras de pontuação já aplicadas aos dados (ausente = 1). */
   versaoRegras?: number
+  /** Sobe e desce já aplicados, um por ciclo de 4 rodadas (9–12, 13–16, ...). */
+  sobeDesce?: SobeDesceAplicado[]
   jogadores: JogadorTemporada[]
   rodadas: RodadaTemporada[]
   criadoEm: string

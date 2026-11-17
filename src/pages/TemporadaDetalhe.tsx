@@ -8,6 +8,7 @@ import type { Liga, JogadorTemporada } from '../types'
 import Modal from '../components/ui/Modal'
 import PlanilhaSyncPanel from '../components/PlanilhaSyncPanel'
 import BotaoConta from '../components/BotaoConta'
+import SobeDesce from '../components/SobeDesce'
 import { useModoLeitura } from '../store/nuvemStore'
 import {
   totalRodadas, rotuloRodada, calcularRankingTemporada, rodadaEmAndamento,
@@ -214,6 +215,8 @@ export default function TemporadaDetalhe() {
             </div>
           )}
         </div>
+
+        <SobeDesce temporada={temporada} />
 
         {/* Toolbar: filtro + nova rodada */}
         <div className="flex items-center justify-between flex-wrap gap-3">

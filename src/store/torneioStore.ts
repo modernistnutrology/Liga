@@ -219,6 +219,9 @@ interface TorneioStore {
   importarTemporadaVillage: () => string
   importarDados: (dados: { torneios: Torneio[]; temporadas: Temporada[] }, modo: 'substituir' | 'mesclar') => void
   alternarAtraso: (temporadaId: string, rodadaId: string, jogadorId: string) => void
+  aplicarSobeDesce: (temporadaId: string, cicloInicio: number, subiram: string[], desceram: string[]) => void
+  /** Desfaz o sobe e desce aplicado por último (volta as ligas). */
+  desfazerSobeDesce: (temporadaId: string) => void
   /** Atualiza temporadas gravadas com regras de pontuação antigas; só o admin consegue gravar. */
   aplicarRegrasAtuaisTemporadas: () => void
   criarRodadaEstruturada: (temporadaId: string, estr: RodadaEstruturada, nome?: string) => string | null
@@ -365,6 +368,40 @@ export const useTorneioStore = create<TorneioStore>()(
               const atrasos = atuais.includes(jogadorId) ? atuais.filter(id => id !== jogadorId) : [...atuais, jogadorId]
               return { ...r, atrasos }
             }),
+          }),
+        }))
+      },
+      aplicarSobeDesce: (temporadaId, cicloInicio, subiram, desceram) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => {
+            if (t.id !== temporadaId || (t.sobeDesce ?? []).some(x => x.cicloInicio === cicloInicio)) return t
+            return {
+              ...t,
+              atualizadoEm: new Date().toISOString(),
+              jogadores: t.jogadores.map(j =>
+                subiram.includes(j.id) ? { ...j, liga: 'A' as Liga } :
+                desceram.includes(j.id) ? { ...j, liga: 'B' as Liga } : j
+              ),
+              sobeDesce: [...(t.sobeDesce ?? []), { cicloInicio, aplicadoEm: new Date().toISOString(), subiram, desceram }],
+            }
+          }),
+        }))
+      },
+      desfazerSobeDesce: (temporadaId) => {
+        set(s => ({
+          temporadas: s.temporadas.map(t => {
+            const historico = t.sobeDesce ?? []
+            if (t.id !== temporadaId || historico.length === 0) return t
+            const ultimo = historico[historico.length - 1]
+            return {
+              ...t,
+              atualizadoEm: new Date().toISOString(),
+              jogadores: t.jogadores.map(j =>
+                ultimo.subiram.includes(j.id) ? { ...j, liga: 'B' as Liga } :
+                ultimo.desceram.includes(j.id) ? { ...j, liga: 'A' as Liga } : j
+              ),
+              sobeDesce: historico.slice(0, -1),
+            }
           }),
         }))
       },
